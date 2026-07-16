@@ -1,0 +1,8 @@
+<view class="picker">
+  <button class="current" bindtap="toggle" aria-label="切换话题图标">{{value}}</button>
+  <view wx:if="{{open}}" class="options">
+    <button wx:for="{{icons}}" wx:key="*this" class="option {{item === value ? 'selected' : ''}}" data-icon="{{item}}" bindtap="selectIcon">
+      {{item}}
+    </button>
+  </view>
+</view>

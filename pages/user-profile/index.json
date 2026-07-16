@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "",
+  "usingComponents": {
+    "post-list-item": "/components/post-list-item/index"
+  }
+}

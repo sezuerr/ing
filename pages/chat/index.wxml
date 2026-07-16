@@ -1,0 +1,34 @@
+<view class="chat-page">
+  <view class="nav-bar" style="padding-top: {{statusBarHeight}}px; height: {{navBarHeight + statusBarHeight}}px;">
+    <view class="nav-inner" style="height: {{navBarHeight}}px; padding-right: {{navRightGap}}px;">
+      <view class="nav-back" bindtap="goBack">
+        <text class="nav-back-icon">‹</text>
+      </view>
+      <view class="nav-peer" bindtap="openProfile">
+        <view class="nav-avatar">
+          <image wx:if="{{peerAvatar}}" src="{{peerAvatar}}" mode="aspectFill" />
+          <text wx:else>{{peerAvatarText}}</text>
+        </view>
+        <text class="nav-name">{{peerName}}</text>
+      </view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="messages" scroll-into-view="{{scrollIntoView}}">
+    <block wx:for="{{messages}}" wx:key="_id">
+      <view wx:if="{{item.dividerType === 'date'}}" class="date-divider">{{item.dividerText}}</view>
+      <view wx:elif="{{item.dividerType === 'time'}}" class="time-divider">{{item.dividerText}}</view>
+      <view id="msg-{{index}}" class="bubble-row {{item.mine ? 'mine' : ''}}">
+        <view class="bubble">{{item.content}}</view>
+      </view>
+      <view wx:if="{{item.mine && item.isLast}}" class="status-text">已发送</view>
+    </block>
+  </scroll-view>
+
+  <view class="composer">
+    <input class="input composer-input" value="{{draft}}" placeholder="发送私信" bindinput="onDraftInput" confirm-type="send" bindconfirm="send" />
+    <view class="send {{canSend ? '' : 'send-disabled'}}" bindtap="send">
+      <image class="send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+    </view>
+  </view>
+</view>

@@ -1,0 +1,234 @@
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10rpx 0 18rpx;
+  background: #fafaf7;
+}
+
+.topbar-title {
+  color: #15130d;
+  font-size: 40rpx;
+  font-weight: 900;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 999rpx;
+  background: #f2f1ec;
+}
+
+.filter-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+.swipe-area {
+  margin-top: 6rpx;
+}
+
+/* 卡片叠层 */
+.card-stack {
+  position: relative;
+}
+
+.card-layer {
+  will-change: transform, opacity;
+}
+
+/* 背后的下一张卡片，缩小并置于底层 */
+.card-behind {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  transform: scale(0.94);
+  opacity: 0.6;
+}
+
+/* 顶层可拖拽卡片 */
+.card-front {
+  position: relative;
+  z-index: 2;
+  transform-origin: center bottom;
+}
+
+.swipe-tip {
+  margin-top: 18rpx;
+  color: #8a806d;
+  font-size: 24rpx;
+  text-align: center;
+}
+
+.empty {
+  margin-top: 88rpx;
+  padding: 56rpx 28rpx;
+  border: 0;
+  border-radius: 28rpx;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 68rpx;
+}
+
+.empty-title {
+  margin-top: 12rpx;
+  color: #15130d;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.empty-copy {
+  margin-top: 10rpx;
+  color: #7d735e;
+  font-size: 26rpx;
+}
+
+/* 筛选浮层 */
+.sheet-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(21, 19, 13, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease;
+}
+
+.sheet-mask.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sheet {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 60vh;
+  max-height: 900rpx;
+  padding: 0 28rpx calc(40rpx + env(safe-area-inset-bottom));
+  border-radius: 32rpx 32rpx 0 0;
+  background: #f2f1ec;
+  transform: translateY(100%);
+  transition: transform 0.28s ease;
+}
+
+.sheet.show {
+  transform: translateY(0);
+}
+
+/* 顶部把手 */
+.sheet-grabber {
+  width: 72rpx;
+  height: 8rpx;
+  margin: 0 auto;
+  border-radius: 999rpx;
+  background: rgba(21, 19, 13, 0.18);
+}
+
+.sheet-header {
+  flex: 0 0 auto;
+  padding: 16rpx 0 0;
+}
+
+.sheet-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 4rpx 24rpx;
+}
+
+.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sheet-title {
+  color: #15130d;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.sheet-close {
+  color: #8a806d;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+/* 分组标题 */
+.group-label {
+  margin: 0 8rpx 12rpx;
+  color: #8a806d;
+  font-size: 24rpx;
+  font-weight: 600;
+  letter-spacing: 1rpx;
+}
+
+.group-label:not(:first-of-type) {
+  margin-top: 32rpx;
+}
+
+/* 卡片容器 */
+.group {
+  overflow: hidden;
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(21, 19, 13, 0.05);
+}
+
+/* 通用行 */
+.cell {
+  position: relative;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 104rpx;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28rpx;
+}
+
+.hairline::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 28rpx;
+  border-bottom: 2rpx solid rgba(21, 19, 13, 0.07);
+}
+
+.cell-title {
+  color: #15130d;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.toggle {
+  width: 84rpx;
+  height: 48rpx;
+}
+
+/* 选中对勾 */
+.check {
+  width: 24rpx;
+  height: 14rpx;
+  border-left: 5rpx solid #15130d;
+  border-bottom: 5rpx solid #15130d;
+  border-radius: 2rpx;
+  transform: rotate(-45deg);
+  margin-bottom: 6rpx;
+}

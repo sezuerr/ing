@@ -1,0 +1,23 @@
+<view class="item-wrap">
+  <view class="reveal-action" catchtap="unmatch">解除</view>
+  <view
+    class="item"
+    style="transform: translateX({{offset}}px);"
+    bindtouchstart="touchStart"
+    bindtouchmove="touchMove"
+    bindtouchend="touchEnd"
+    bindtap="open"
+  >
+    <view class="avatar">{{avatarText}}</view>
+    <view class="body">
+      <view class="topline">
+        <text class="name">{{item.peer.nickName || '同学'}}</text>
+        <text class="time">{{item.timeText}}</text>
+      </view>
+      <view class="bottomline">
+        <text class="last">{{item.lastMessage.text || '开始聊天吧'}}</text>
+        <text wx:if="{{item.unreadCount}}" class="badge">{{item.unreadCount}}</text>
+      </view>
+    </view>
+  </view>
+</view>

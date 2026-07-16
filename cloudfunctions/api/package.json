@@ -1,0 +1,9 @@
+{
+  "name": "ing-api",
+  "version": "0.1.0",
+  "description": "Unified cloud function API for ing MVP",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

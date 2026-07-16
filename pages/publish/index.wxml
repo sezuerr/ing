@@ -1,0 +1,28 @@
+<view class="page publish-page">
+  <view class="editor panel">
+    <view class="topic-row">
+      <topic-icon-picker value="{{form.icon}}" bind:change="onIconChange" />
+      <input class="title-input" maxlength="40" value="{{form.title}}" placeholder="今日话题或自定义标题" bindinput="onTitleInput" />
+    </view>
+
+    <textarea class="textarea content-input" maxlength="800" value="{{form.body}}" placeholder="写下此刻正在发生的 ing..." bindinput="onBodyInput" />
+
+    <view class="images">
+      <image wx:for="{{form.imageUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="image" />
+      <button class="image-btn" bindtap="chooseImages">+ Image</button>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">位置与隐私</view>
+    <view class="panel privacy">
+      <visibility-selector value="{{form.visibility}}" bind:change="onVisibilityChange" />
+      <view class="location">
+        <text>{{locationText}}</text>
+        <button class="ghost-btn locate" bindtap="refreshLocation">更新位置</button>
+      </view>
+    </view>
+  </view>
+
+  <button class="primary-btn submit" bindtap="submit" loading="{{submitting}}">发布</button>
+</view>

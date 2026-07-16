@@ -1,0 +1,84 @@
+<view class="card" wx:if="{{post}}">
+  <block wx:if="{{post.imageUrls && post.imageUrls.length}}">
+    <view class="hero">
+      <image class="hero-image" mode="aspectFill" src="{{post.imageUrls[0]}}" />
+      <view class="hero-overlay"></view>
+      <view class="report report-hero" catchtap="openReport" aria-label="举报或不感兴趣">
+        <image class="report-icon report-icon-hero" src="/icons/hand.svg" mode="aspectFit" />
+      </view>
+      <view class="identity identity-hero">
+        <view class="avatar avatar-hero">{{avatarText}}</view>
+        <view class="meta-text">
+          <view class="name name-hero">{{displayName}}</view>
+          <view class="sub sub-hero">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
+        </view>
+      </view>
+    </view>
+
+    <view class="body body-floating">
+      <view class="content">
+        <view class="title-row">
+          <view class="topic-badge">
+            <text class="topic-badge-icon">{{post.icon || '💡'}}</text>
+          </view>
+          <text class="title">{{post.title}}</text>
+        </view>
+        <text class="body-text">{{post.body}}</text>
+        <scroll-view wx:if="{{post.imageUrls.length > 1}}" scroll-x class="images">
+          <image wx:for="{{post.imageUrls}}" wx:key="*this" class="image" mode="aspectFill" src="{{item}}" />
+        </scroll-view>
+      </view>
+
+      <view class="footer">
+        <view class="icon-btn like-btn {{liked ? 'liked' : ''}}" catchtap="like" aria-label="点亮">
+          <image class="footer-icon" src="{{liked ? '/icons/lightbulb-fill.svg' : '/icons/lightbulb-line.svg'}}" mode="aspectFit" />
+        </view>
+        <block wx:if="{{canComment}}">
+          <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
+          <view class="icon-btn send-btn" catchtap="send" aria-label="发送">
+            <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+          </view>
+        </block>
+      </view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="body">
+      <view class="meta">
+        <view class="identity">
+          <view class="avatar">{{avatarText}}</view>
+          <view class="meta-text">
+            <view class="name">{{displayName}}</view>
+            <view class="sub">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
+          </view>
+        </view>
+        <view class="report" catchtap="openReport" aria-label="举报或不感兴趣">
+          <image class="report-icon" src="/icons/hand.svg" mode="aspectFit" />
+        </view>
+      </view>
+
+      <view class="content">
+        <view class="title-row">
+          <view class="topic-badge">
+            <text class="topic-badge-icon">{{post.icon || '💡'}}</text>
+          </view>
+          <text class="title">{{post.title}}</text>
+        </view>
+        <text class="body-text">{{post.body}}</text>
+      </view>
+
+      <view class="footer">
+        <view class="icon-btn like-btn {{liked ? 'liked' : ''}}" catchtap="like" aria-label="点亮">
+          <image class="footer-icon" src="{{liked ? '/icons/lightbulb-fill.svg' : '/icons/lightbulb-line.svg'}}" mode="aspectFit" />
+        </view>
+        <block wx:if="{{canComment}}">
+          <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
+          <view class="icon-btn send-btn" catchtap="send" aria-label="发送">
+            <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+          </view>
+        </block>
+      </view>
+    </view>
+  </block>
+</view>

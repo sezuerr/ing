@@ -1,0 +1,39 @@
+.picker {
+  position: relative;
+}
+
+.current,
+.option {
+  display: flex;
+  width: 88rpx;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2rpx solid #eadfb8;
+  border-radius: 999rpx;
+  background: #fff8dc;
+  font-size: 42rpx;
+  line-height: 88rpx;
+  padding: 0;
+}
+
+.options {
+  position: absolute;
+  top: 102rpx;
+  left: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(3, 88rpx);
+  gap: 12rpx;
+  padding: 14rpx;
+  border: 2rpx solid #eadfb8;
+  border-radius: 16rpx;
+  background: #fffdf7;
+  box-shadow: 0 12rpx 28rpx rgba(45, 37, 17, 0.12);
+}
+
+.selected {
+  border-color: #e7b900;
+  background: #ffd84d;
+}

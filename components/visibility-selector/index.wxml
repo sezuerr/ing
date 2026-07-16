@@ -1,0 +1,5 @@
+<view class="selector">
+  <button wx:for="{{options}}" wx:key="value" class="option {{value === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="select">
+    {{item.label}}
+  </button>
+</view>

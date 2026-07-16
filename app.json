@@ -1,0 +1,56 @@
+{
+  "pages": [
+    "pages/settings/index",
+    "pages/discover/index",
+    "pages/publish/index",
+    "pages/messages/index",
+    "pages/profile/index",
+    "pages/post-detail/index",
+    "pages/chat/index",
+    "pages/notification-list/index",
+    "pages/user-profile/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "",
+    "navigationBarBackgroundColor": "#FFD84D",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FAFAF7",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#766F60",
+    "selectedColor": "#15130D",
+    "backgroundColor": "#FAFAF7",
+    "list": [
+      {
+        "pagePath": "pages/settings/index",
+        "text": "设置"
+      },
+      {
+        "pagePath": "pages/discover/index",
+        "text": "发现"
+      },
+      {
+        "pagePath": "pages/publish/index",
+        "text": "发布"
+      },
+      {
+        "pagePath": "pages/messages/index",
+        "text": "信息"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于计算同城和校园范围内的模糊距离，不会长期保存精确位置。"
+    }
+  }
+}

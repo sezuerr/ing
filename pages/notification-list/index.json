@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "",
+  "usingComponents": {
+    "notification-item": "/components/notification-item/index"
+  }
+}

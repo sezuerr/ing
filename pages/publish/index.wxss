@@ -1,0 +1,77 @@
+.editor {
+  padding: 24rpx;
+}
+
+.topic-row {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+}
+
+.title-input {
+  min-width: 0;
+  flex: 1;
+  height: 88rpx;
+  color: #15130d;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.content-input {
+  margin-top: 24rpx;
+  border: 0;
+  background: transparent;
+}
+
+.images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+  margin-top: 20rpx;
+}
+
+.image,
+.image-btn {
+  width: 156rpx;
+  height: 156rpx;
+  border-radius: 14rpx;
+}
+
+.image {
+  background: #eee3bf;
+}
+
+.image-btn {
+  border: 2rpx dashed #d9c988;
+  background: #fff8dc;
+  color: #8a6d00;
+  font-size: 24rpx;
+  line-height: 152rpx;
+  padding: 0;
+}
+
+.privacy {
+  padding: 20rpx;
+}
+
+.location {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+  color: #7d735e;
+  font-size: 24rpx;
+}
+
+.locate {
+  width: 150rpx;
+  height: 58rpx;
+  margin: 0;
+  font-size: 22rpx;
+  line-height: 54rpx;
+  padding: 0;
+}
+
+.submit {
+  margin-top: 28rpx;
+}

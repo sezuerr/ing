@@ -1,0 +1,109 @@
+var startX = 0
+var startY = 0
+var dragging = false
+var horizontal = false
+var decided = false
+
+function abs(n) { return n < 0 ? -n : n }
+function clamp(n, min, max) { return n < min ? min : (n > max ? max : n) }
+
+function touchStart(e, owner) {
+  var t = e.touches[0] || e.changedTouches[0]
+  startX = t.pageX
+  startY = t.pageY
+  dragging = true
+  decided = false
+  horizontal = false
+}
+
+function touchMove(e, owner) {
+  if (!dragging) return
+  var t = e.touches[0] || e.changedTouches[0]
+  var dx = t.pageX - startX
+  var dy = t.pageY - startY
+
+  // 首次移动判定方向：竖向为主则交给页面滚动
+  if (!decided && (abs(dx) > 6 || abs(dy) > 6)) {
+    decided = true
+    horizontal = abs(dx) > abs(dy)
+  }
+  if (!horizontal) return
+
+  var front = owner.selectComponent('.card-front')
+  if (!front) return
+  var deg = clamp(dx / 22, -16, 16)
+  front.setStyle({
+    transform: 'translateX(' + dx + 'px) translateY(' + (dy * 0.12) + 'px) rotate(' + deg + 'deg)',
+    transition: 'none'
+  })
+
+  var behind = owner.selectComponent('.card-behind')
+  if (behind) {
+    var p = clamp(abs(dx) / 220, 0, 1)
+    behind.setStyle({
+      transform: 'scale(' + (0.94 + 0.06 * p) + ')',
+      opacity: '' + (0.6 + 0.4 * p),
+      transition: 'none'
+    })
+  }
+}
+
+function touchEnd(e, owner) {
+  if (!dragging) return
+  dragging = false
+  if (!horizontal) return
+
+  var t = e.changedTouches[0]
+  var dx = t.pageX - startX
+  var width = (e.currentTarget.dataset.width || 375) * 1
+  var front = owner.selectComponent('.card-front')
+  if (!front) return
+
+  if (dx < -width * 0.26) {
+    // 达到阈值：向左飞出
+    front.setStyle({
+      transform: 'translateX(' + (-width * 1.5) + 'px) rotate(-18deg)',
+      transition: 'transform 0.34s ease-out'
+    })
+    var behindGo = owner.selectComponent('.card-behind')
+    if (behindGo) {
+      behindGo.setStyle({
+        transform: 'scale(1)',
+        opacity: '1',
+        transition: 'transform 0.34s ease-out, opacity 0.34s ease-out'
+      })
+    }
+    owner.callMethod('onSwipedAway')
+  } else {
+    // 未达阈值：回弹
+    front.setStyle({
+      transform: 'translateX(0) translateY(0) rotate(0deg)',
+      transition: 'transform 0.32s cubic-bezier(0.22, 1, 0.36, 1)'
+    })
+    var behind = owner.selectComponent('.card-behind')
+    if (behind) {
+      behind.setStyle({
+        transform: 'scale(0.94)',
+        opacity: '0.6',
+        transition: 'transform 0.32s ease, opacity 0.32s ease'
+      })
+    }
+  }
+}
+
+// 数据切换到下一张后，瞬时把顶层卡片复位到中心
+function reset(newVal, oldVal, owner, ins) {
+  ins.setStyle({
+    transform: 'translateX(0) translateY(0) rotate(0deg)',
+    transition: 'none'
+  })
+  var behind = owner.selectComponent('.card-behind')
+  if (behind) behind.setStyle({ transform: 'scale(0.94)', opacity: '0.6', transition: 'none' })
+}
+
+module.exports = {
+  touchStart: touchStart,
+  touchMove: touchMove,
+  touchEnd: touchEnd,
+  reset: reset
+}

@@ -1,0 +1,48 @@
+<view class="page settings-page">
+  <view class="group-label">个人资料</view>
+  <view class="group">
+    <view class="cell hairline">
+      <button class="cell-tap" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar"></button>
+      <view class="cell-title">头像</view>
+      <view class="cell-value">
+        <text class="cell-value-text">{{profile.avatarUrl ? '已设置' : '未设置'}}</text>
+        <view class="chevron"></view>
+      </view>
+    </view>
+
+    <view class="cell hairline">
+      <view class="cell-title">昵称</view>
+      <input class="cell-input" maxlength="20" value="{{profile.nickName}}" placeholder="给自己取个名字" bindinput="onNickNameInput" />
+    </view>
+
+    <picker class="cell-picker" mode="selector" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderChange">
+      <view class="cell hairline">
+        <view class="cell-title">性别</view>
+        <view class="cell-value">
+          <text class="cell-value-text">{{profile.gender}}</text>
+          <view class="chevron"></view>
+        </view>
+      </view>
+    </picker>
+
+    <picker class="cell-picker" mode="selector" range="{{universities}}" range-key="name" value="{{universityIndex}}" bindchange="onUniversityChange">
+      <view class="cell">
+        <view class="cell-title">学校</view>
+        <view class="cell-value">
+          <text class="cell-value-text {{selectedUniversity.name ? '' : 'placeholder'}}">{{selectedUniversity.name || '请选择'}}</text>
+          <view class="chevron"></view>
+        </view>
+      </view>
+    </picker>
+  </view>
+
+  <view class="group-label">一句话简介</view>
+  <view class="group">
+    <view class="cell-stack">
+      <textarea class="bio" maxlength="50" value="{{profile.bio}}" placeholder="50字以内，描述此刻的你" bindinput="onBioInput" />
+      <view class="counter">{{bioCount}}/50</view>
+    </view>
+  </view>
+
+  <button class="primary-btn save" bindtap="saveProfile" loading="{{saving}}">保存资料</button>
+</view>

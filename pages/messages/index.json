@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "",
+  "usingComponents": {
+    "chat-item": "/components/chat-item/index"
+  }
+}

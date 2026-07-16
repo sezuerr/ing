@@ -1,0 +1,23 @@
+<view class="page detail-page">
+  <view class="panel post">
+    <view class="title-row">
+      <text class="icon">{{post.icon || '💡'}}</text>
+      <text class="title">{{post.title}}</text>
+    </view>
+    <text class="body">{{post.body}}</text>
+    <scroll-view wx:if="{{post.imageUrls && post.imageUrls.length}}" scroll-x class="images">
+      <image wx:for="{{post.imageUrls}}" wx:key="*this" class="image" mode="aspectFill" src="{{item}}" />
+    </scroll-view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">收到的评论</view>
+    <view class="panel comments">
+      <view wx:for="{{comments}}" wx:key="_id" class="comment">
+        <view class="comment-name">{{item.fromUser.nickName || '好友'}}</view>
+        <view class="comment-body">{{item.content}}</view>
+      </view>
+      <view wx:if="{{!comments.length}}" class="empty-row">暂无评论明细</view>
+    </view>
+  </view>
+</view>

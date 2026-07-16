@@ -1,0 +1,105 @@
+page {
+  min-height: 100%;
+  background: #fafaf7;
+  color: #15130d;
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  letter-spacing: 0;
+}
+
+button {
+  font: inherit;
+}
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 24rpx 28rpx calc(148rpx + env(safe-area-inset-bottom));
+}
+
+.section {
+  margin-bottom: 28rpx;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+  color: #15130d;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.panel {
+  border: 2rpx solid rgba(21, 19, 13, 0.06);
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(21, 19, 13, 0.05);
+}
+
+.primary-btn {
+  height: 92rpx;
+  border-radius: 999rpx;
+  background: #ffd84d;
+  color: #15130d;
+  font-weight: 800;
+  line-height: 92rpx;
+  box-shadow: 0 12rpx 26rpx rgba(235, 180, 0, 0.22);
+}
+
+.ghost-btn {
+  border: 2rpx solid rgba(21, 19, 13, 0.14);
+  border-radius: 999rpx;
+  background: #ffffff;
+  color: #15130d;
+}
+
+.muted {
+  color: #8a806d;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  height: 56rpx;
+  padding: 0 20rpx;
+  border-radius: 999rpx;
+  background: #f2f1ec;
+  color: #4a4436;
+  font-size: 24rpx;
+  line-height: 56rpx;
+}
+
+.chip-icon {
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.hairline {
+  border-bottom: 2rpx solid rgba(21, 19, 13, 0.08);
+}
+
+.hairline:last-child {
+  border-bottom: 0;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 2rpx solid #ece1bd;
+  border-radius: 14rpx;
+  background: #fffdf7;
+  color: #15130d;
+}
+
+.input {
+  height: 88rpx;
+  padding: 0 22rpx;
+}
+
+.textarea {
+  min-height: 240rpx;
+  padding: 22rpx;
+}

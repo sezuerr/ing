@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "",
+  "usingComponents": {
+    "topic-icon-picker": "/components/topic-icon-picker/index",
+    "visibility-selector": "/components/visibility-selector/index"
+  }
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "id": "fudan",
+    "name": "复旦大学",
+    "cityCode": "shanghai",
+    "campus": "邯郸校区",
+    "geoHash": "wtw3sj"
+  },
+  {
+    "id": "sjtu",
+    "name": "上海交通大学",
+    "cityCode": "shanghai",
+    "campus": "闵行校区",
+    "geoHash": "wtw37q"
+  },
+  {
+    "id": "tongji",
+    "name": "同济大学",
+    "cityCode": "shanghai",
+    "campus": "四平路校区",
+    "geoHash": "wtw3un"
+  },
+  {
+    "id": "ecnu",
+    "name": "华东师范大学",
+    "cityCode": "shanghai",
+    "campus": "普陀校区",
+    "geoHash": "wtw3s7"
+  },
+  {
+    "id": "shufe",
+    "name": "上海财经大学",
+    "cityCode": "shanghai",
+    "campus": "国定路校区",
+    "geoHash": "wtw3uy"
+  }
+]

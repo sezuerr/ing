@@ -1,0 +1,10 @@
+.list {
+  background: transparent;
+}
+
+.empty-row {
+  padding: 34rpx 4rpx;
+  color: #8a806d;
+  font-size: 26rpx;
+  text-align: center;
+}

@@ -1,0 +1,63 @@
+<wxs module="swipe" src="./swipe.wxs"></wxs>
+<view class="page discover-page">
+  <view class="topbar">
+    <view class="topbar-title">发现</view>
+    <view class="filter-btn" bindtap="openFilter">
+      <image class="filter-icon" src="/icons/equalizer-2-line.svg" mode="aspectFit" />
+    </view>
+  </view>
+
+  <view wx:if="{{currentPost}}" class="swipe-area">
+    <view class="card-stack">
+      <view wx:if="{{nextPost}}" class="card-layer card-behind">
+        <post-card post="{{nextPost}}" />
+      </view>
+
+      <view class="card-layer card-front"
+            data-width="{{windowWidth}}"
+            change:prop="{{swipe.reset}}" prop="{{currentIndex}}"
+            bindtouchstart="{{swipe.touchStart}}"
+            bindtouchmove="{{swipe.touchMove}}"
+            bindtouchend="{{swipe.touchEnd}}">
+        <post-card post="{{currentPost}}" bind:like="likePost" bind:reply="replyPost" bind:report="reportPost" />
+      </view>
+    </view>
+    <view class="swipe-tip">左划看下一张 · 不可回退</view>
+  </view>
+
+  <view wx:else class="empty panel">
+    <view class="empty-icon">💡</view>
+    <view class="empty-title">附近暂时安静</view>
+    <view class="empty-copy">换个范围，或者发布一个此刻的想法。</view>
+  </view>
+
+  <!-- 筛选浮层 -->
+  <view class="sheet-mask {{filterVisible ? 'show' : ''}}" bindtap="closeFilter"></view>
+  <view class="sheet {{filterVisible ? 'show' : ''}}" catchtap="noop">
+    <view class="sheet-header">
+      <view class="sheet-grabber"></view>
+      <view class="sheet-header-row">
+        <view class="sheet-title">筛选</view>
+        <view class="sheet-close" bindtap="closeFilter">完成</view>
+      </view>
+    </view>
+
+    <scroll-view class="sheet-body" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="group-label">话题</view>
+      <view class="group">
+        <view class="cell" bindtap="toggleTopicOnly">
+          <view class="cell-title">只看随机话题</view>
+          <image class="toggle" src="{{topicOnly ? '/icons/toggle-fill.svg' : '/icons/toggle-line.svg'}}" mode="aspectFit" />
+        </view>
+      </view>
+
+      <view class="group-label">浏览范围</view>
+      <view class="group">
+        <view wx:for="{{scopes}}" wx:key="value" class="cell {{index < scopes.length - 1 ? 'hairline' : ''}}" data-value="{{item.value}}" bindtap="changeScope">
+          <view class="cell-title">{{item.label}}</view>
+          <view wx:if="{{scope === item.value}}" class="check"></view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>
