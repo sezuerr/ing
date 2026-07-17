@@ -31,5 +31,9 @@ Page({
 
   openPost(event) {
     wx.navigateTo({ url: `/pages/post-detail/index?id=${event.detail.post._id}` });
+  },
+
+  openSettings() {
+    wx.navigateTo({ url: "/pages/settings/index" });
   }
 });

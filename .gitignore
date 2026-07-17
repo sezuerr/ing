@@ -3,4 +3,6 @@ miniprogram_npm/
 cloudfunctions/*/node_modules/
 project.private.config.json
 .DS_Store
+**/.DS_Store
+**/*_1*
 *.log

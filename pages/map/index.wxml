@@ -1,0 +1,97 @@
+<view class="map-page">
+  <view class="map-container" style="padding-top: {{statusBarHeight + 100}}px;">
+    <movable-area class="map-canvas" scale-area>
+      <movable-view
+        class="map-surface"
+        direction="all"
+        scale
+        scale-min="1"
+        scale-max="3"
+        bindscale="onScaleChange">
+
+        <view class="map-bg">
+          <view class="map-bg-glow map-bg-glow-1"></view>
+          <view class="map-bg-glow map-bg-glow-2"></view>
+          <view class="map-bg-glow map-bg-glow-3"></view>
+        </view>
+
+        <block wx:for="{{clusteredMarkers}}" wx:key="id">
+          <!-- Cluster 聚合体 -->
+          <view
+            wx:if="{{item._size === 'cluster'}}"
+            class="map-marker map-marker-cluster"
+            style="left: {{item.x}}rpx; top: {{item.y}}rpx;"
+            data-id="{{item.id}}"
+            data-size="cluster"
+            catchtap="onMarkerTap">
+            <view class="marker-glow-ring marker-glow-ring-cluster"></view>
+            <view class="marker-dot marker-dot-cluster">
+              <text class="marker-emoji marker-emoji-cluster">{{item.emoji}}</text>
+            </view>
+            <view class="cluster-badge">+{{item.count}}</view>
+            <view class="marker-label-row">
+              <text class="marker-label">{{item.label}}</text>
+            </view>
+          </view>
+
+          <!-- Single 独立小灯泡 -->
+          <view
+            wx:else
+            class="map-marker"
+            style="left: {{item.x}}rpx; top: {{item.y}}rpx; animation-delay: {{index * 0.22}}s;"
+            data-id="{{item.id}}"
+            data-size="single"
+            catchtap="onMarkerTap">
+            <view class="marker-glow-ring"></view>
+            <view class="marker-dot">
+              <text class="marker-emoji">{{item.emoji}}</text>
+            </view>
+            <view class="marker-label-row">
+              <text class="marker-label">{{item.label}}</text>
+              <text class="marker-landmark" wx:if="{{item.landmark}}">{{item.landmark}}</text>
+            </view>
+          </view>
+        </block>
+      </movable-view>
+    </movable-area>
+    <view class="map-hint">双指缩放 · 拖动探索 · 放大散开</view>
+  </view>
+
+  <!-- ====== 原位放大镜弹窗 ====== -->
+  <view class="popover-overlay {{showPopover ? 'visible' : ''}}" catchtap="closePopover">
+    <view class="popover-card {{showPopover ? 'pop-in' : ''}}" catchtap="noop">
+      <view wx:if="{{popoverData}}" class="popover-inner">
+        <view class="popover-header">
+          <view class="popover-avatar">{{popoverData.avatarText || '?'}}</view>
+          <view class="popover-meta">
+            <text class="popover-name">{{popoverData.displayName || '同学'}}</text>
+            <text class="popover-time">{{popoverData.timeText}} · {{popoverData.universityName || ''}}</text>
+          </view>
+        </view>
+
+        <view class="popover-landmark" wx:if="{{popoverData.landmark}}">
+          <text>📍 {{popoverData.landmark}}</text>
+        </view>
+
+        <view class="popover-body">
+          <text>{{popoverData.body || '这个人很懒，什么都没写。'}}</text>
+        </view>
+
+        <view class="popover-footer">
+          <view class="popover-like-btn" catchtap="likeFromPopover">
+            <text class="popover-like-icon">💡</text>
+            <text class="popover-like-text">点亮</text>
+          </view>
+          <input
+            class="popover-reply-input"
+            value="{{popoverDraft}}"
+            placeholder="私密回复…"
+            confirm-type="send"
+            bindinput="onPopoverDraft"
+            bindconfirm="replyFromPopover"
+          />
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

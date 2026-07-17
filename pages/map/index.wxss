@@ -1,0 +1,377 @@
+/* ===== 地图 Marker Q弹浮动 ===== */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-16rpx); }
+  50% { transform: translateY(-4rpx); }
+  70% { transform: translateY(-12rpx); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.4); opacity: 1; }
+}
+
+@keyframes clusterGlow {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.5); opacity: 1; }
+}
+
+@keyframes popIn {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+  65% { transform: translate(-50%, -50%) scale(1.04); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* ==================== 页面背景 — 糖果薄暮 ==================== */
+.map-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #F4F4FC 0%, #E8E0F8 25%, #E0F7FA 65%, #F8F4FF 100%);
+}
+
+/* ==================== 地图区域 ==================== */
+.map-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.map-surface {
+  width: 750rpx;
+  height: 1200rpx;
+}
+
+.map-bg {
+  position: absolute;
+  inset: 0;
+}
+
+.map-bg-glow {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.map-bg-glow-1 {
+  width: 500rpx;
+  height: 500rpx;
+  top: 80rpx;
+  left: 80rpx;
+  background: radial-gradient(circle, rgba(255, 218, 185, 0.4) 0%, transparent 70%);
+}
+
+.map-bg-glow-2 {
+  width: 450rpx;
+  height: 450rpx;
+  top: 520rpx;
+  left: 280rpx;
+  background: radial-gradient(circle, rgba(230, 230, 250, 0.45) 0%, transparent 70%);
+}
+
+.map-bg-glow-3 {
+  width: 380rpx;
+  height: 380rpx;
+  top: 200rpx;
+  left: 380rpx;
+  background: radial-gradient(circle, rgba(255, 240, 245, 0.4) 0%, transparent 70%);
+}
+
+/* ==================== Marker 通用 ==================== */
+.map-marker {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+  animation: bounce 2.6s ease-in-out infinite;
+}
+
+.map-marker-cluster {
+  animation: none;
+}
+
+.marker-glow-ring {
+  position: absolute;
+  top: -10rpx;
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.35) 0%, transparent 70%);
+  animation: glowPulse 2.2s ease-in-out infinite;
+  z-index: 0;
+}
+
+.marker-glow-ring-cluster {
+  top: -20rpx;
+  width: 120rpx;
+  height: 120rpx;
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.5) 0%, rgba(255, 215, 0, 0.12) 50%, transparent 70%);
+  animation: clusterGlow 2s ease-in-out infinite;
+}
+
+/* ===== Single 小灯泡 ===== */
+.marker-dot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 48rpx;
+  height: 48rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: transparent;
+  filter: drop-shadow(0 0 14rpx rgba(255, 215, 0, 0.9)) drop-shadow(0 0 28rpx rgba(255, 215, 0, 0.5));
+}
+
+.marker-emoji {
+  font-size: 24rpx;
+  line-height: 1;
+  z-index: 1;
+  background: #FFD700;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 0 18rpx rgba(255, 215, 0, 0.7),
+    0 0 36rpx rgba(255, 215, 0, 0.4),
+    0 0 56rpx rgba(255, 215, 0, 0.2);
+}
+
+/* ===== Cluster 大聚合体 ===== */
+.marker-dot-cluster {
+  width: 80rpx;
+  height: 80rpx;
+  background: transparent;
+  filter: drop-shadow(0 0 22rpx rgba(255, 215, 0, 1)) drop-shadow(0 0 44rpx rgba(255, 215, 0, 0.7)) drop-shadow(0 0 66rpx rgba(255, 215, 0, 0.4));
+}
+
+.marker-emoji-cluster {
+  width: 80rpx;
+  height: 80rpx;
+  font-size: 40rpx;
+  background: #FFD700;
+  box-shadow:
+    0 0 28rpx rgba(255, 215, 0, 0.9),
+    0 0 56rpx rgba(255, 215, 0, 0.5),
+    0 0 84rpx rgba(255, 215, 0, 0.25);
+}
+
+.cluster-badge {
+  position: absolute;
+  top: -6rpx;
+  right: -8rpx;
+  z-index: 3;
+  padding: 2rpx 10rpx;
+  border-radius: 999rpx;
+  background: #ffffff;
+  color: #15130d;
+  font-size: 20rpx;
+  font-weight: 800;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.12);
+}
+
+.marker-label-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rpx;
+}
+
+.marker-label {
+  padding: 4rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10rpx);
+  -webkit-backdrop-filter: blur(10rpx);
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.marker-landmark {
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8rpx);
+  -webkit-backdrop-filter: blur(8rpx);
+  color: #4a4a4a;
+  font-size: 18rpx;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.map-hint {
+  position: absolute;
+  right: 0;
+  bottom: 40rpx;
+  left: 0;
+  z-index: 6;
+  padding: 12rpx 0;
+  color: rgba(0, 0, 0, 0.25);
+  font-size: 22rpx;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* ==================== 原位放大镜弹窗 ==================== */
+.popover-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(14rpx);
+  -webkit-backdrop-filter: blur(14rpx);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s;
+}
+
+.popover-overlay.visible {
+  opacity: 1;
+  visibility: visible;
+}
+
+.popover-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.8);
+  width: 600rpx;
+  max-height: 68vh;
+  overflow-y: auto;
+  border-radius: 40rpx;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+  box-shadow:
+    0 24rpx 72rpx rgba(255, 193, 7, 0.12),
+    0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.popover-card.pop-in {
+  animation: popIn 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.popover-inner {
+  padding: 36rpx 32rpx 32rpx;
+}
+
+.popover-header {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin-bottom: 18rpx;
+}
+
+.popover-avatar {
+  display: flex;
+  width: 72rpx;
+  height: 72rpx;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #15130d, #342e22);
+  color: #ffd84d;
+  font-size: 36rpx;
+  font-weight: 800;
+}
+
+.popover-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.popover-name {
+  color: #15130d;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+
+.popover-time {
+  color: #8a806d;
+  font-size: 22rpx;
+}
+
+.popover-landmark {
+  margin-bottom: 14rpx;
+  padding: 8rpx 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 193, 7, 0.15);
+  align-self: flex-start;
+  display: inline-block;
+  color: #b8860b;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.popover-body {
+  margin-bottom: 28rpx;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 249, 230, 0.6);
+  color: #342e22;
+  font-size: 28rpx;
+  line-height: 44rpx;
+  white-space: pre-wrap;
+}
+
+.popover-footer {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.popover-like-btn {
+  display: flex;
+  width: 100rpx;
+  height: 88rpx;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rpx;
+  border-radius: 999rpx;
+  background: #FFD700;
+  box-shadow: 0 6rpx 20rpx rgba(255, 215, 0, 0.4);
+}
+
+.popover-like-icon {
+  font-size: 30rpx;
+  line-height: 1;
+}
+
+.popover-like-text {
+  color: #15130d;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.popover-reply-input {
+  flex: 1;
+  min-width: 0;
+  height: 88rpx;
+  box-sizing: border-box;
+  padding: 0 28rpx;
+  border-radius: 999rpx;
+  background: #f2efe3;
+  border: 2rpx solid rgba(255, 193, 7, 0.15);
+  color: #15130d;
+  font-size: 28rpx;
+}

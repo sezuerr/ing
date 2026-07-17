@@ -1,5 +1,12 @@
 .editor {
   padding: 24rpx;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: saturate(180%) blur(20rpx);
+  -webkit-backdrop-filter: saturate(180%) blur(20rpx);
+  border-radius: 32rpx;
+  box-shadow:
+    0 16rpx 48rpx rgba(255, 193, 7, 0.1),
+    0 4rpx 14rpx rgba(21, 19, 13, 0.05);
 }
 
 .topic-row {
@@ -34,17 +41,17 @@
 .image-btn {
   width: 156rpx;
   height: 156rpx;
-  border-radius: 14rpx;
+  border-radius: 18rpx;
 }
 
 .image {
-  background: #eee3bf;
+  background: linear-gradient(135deg, #ffe8a0, #ffd84d);
 }
 
 .image-btn {
-  border: 2rpx dashed #d9c988;
-  background: #fff8dc;
-  color: #8a6d00;
+  border: 2rpx dashed #e0c060;
+  background: rgba(255, 248, 220, 0.6);
+  color: #b8860b;
   font-size: 24rpx;
   line-height: 152rpx;
   padding: 0;
@@ -52,6 +59,9 @@
 
 .privacy {
   padding: 20rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8rpx 24rpx rgba(255, 193, 7, 0.06);
 }
 
 .location {
@@ -74,4 +84,6 @@
 
 .submit {
   margin-top: 28rpx;
+  background: linear-gradient(135deg, #ffc107, #ff9800) !important;
+  box-shadow: 0 12rpx 28rpx rgba(255, 152, 0, 0.28) !important;
 }

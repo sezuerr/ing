@@ -1,6 +1,6 @@
 page {
   min-height: 100%;
-  background: #fafaf7;
+  background: #fff9e6;
   color: #15130d;
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
   letter-spacing: 0;
@@ -31,20 +31,22 @@ button {
 }
 
 .panel {
-  border: 2rpx solid rgba(21, 19, 13, 0.06);
-  border-radius: 24rpx;
-  background: #ffffff;
-  box-shadow: 0 8rpx 24rpx rgba(21, 19, 13, 0.05);
+  border: 2rpx solid rgba(255, 193, 7, 0.12);
+  border-radius: 28rpx;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 12rpx 36rpx rgba(255, 193, 7, 0.08),
+    0 4rpx 12rpx rgba(21, 19, 13, 0.04);
 }
 
 .primary-btn {
   height: 92rpx;
   border-radius: 999rpx;
-  background: #ffd84d;
+  background: linear-gradient(135deg, #ffc107, #ff9800);
   color: #15130d;
   font-weight: 800;
   line-height: 92rpx;
-  box-shadow: 0 12rpx 26rpx rgba(235, 180, 0, 0.22);
+  box-shadow: 0 12rpx 28rpx rgba(255, 152, 0, 0.25);
 }
 
 .ghost-btn {
@@ -65,7 +67,7 @@ button {
   height: 56rpx;
   padding: 0 20rpx;
   border-radius: 999rpx;
-  background: #f2f1ec;
+  background: #f2efe3;
   color: #4a4436;
   font-size: 24rpx;
   line-height: 56rpx;
@@ -88,7 +90,7 @@ button {
 .textarea {
   width: 100%;
   box-sizing: border-box;
-  border: 2rpx solid #ece1bd;
+  border: 2rpx solid rgba(255, 193, 7, 0.2);
   border-radius: 14rpx;
   background: #fffdf7;
   color: #15130d;

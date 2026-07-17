@@ -1,4 +1,5 @@
 <view class="card" wx:if="{{post}}">
+  <view class="tape"></view>
   <block wx:if="{{post.imageUrls && post.imageUrls.length}}">
     <view class="hero">
       <image class="hero-image" mode="aspectFill" src="{{post.imageUrls[0]}}" />
@@ -30,15 +31,27 @@
       </view>
 
       <view class="footer">
-        <view class="icon-btn like-btn {{liked ? 'liked' : ''}}" catchtap="like" aria-label="点亮">
-          <image class="footer-icon" src="{{liked ? '/icons/lightbulb-fill.svg' : '/icons/lightbulb-line.svg'}}" mode="aspectFit" />
+        <view wx:if="{{matched}}" class="unlock-row" catchtap="goChat">
+          <text class="unlock-icon">💡</text>
+          <text class="unlock-text">已配对 · 去聊天</text>
         </view>
-        <block wx:if="{{canComment}}">
-          <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
-          <view class="icon-btn send-btn" catchtap="send" aria-label="发送">
-            <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+        <view wx:elif="{{liked}}" class="footer-liked">
+          <view class="like-status liked">
+            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
           </view>
-        </block>
+          <text class="wait-text">已点亮 · 等待回应</text>
+        </view>
+        <view wx:else class="footer-default">
+          <view class="icon-btn like-btn" bindtap="like" aria-label="点亮">
+            <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
+          </view>
+          <view wx:if="{{canComment}}" class="reply-area">
+            <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
+            <view class="icon-btn send-btn" catchtap="send" aria-label="发送">
+              <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+            </view>
+          </view>
+        </view>
       </view>
     </view>
   </block>
@@ -69,15 +82,27 @@
       </view>
 
       <view class="footer">
-        <view class="icon-btn like-btn {{liked ? 'liked' : ''}}" catchtap="like" aria-label="点亮">
-          <image class="footer-icon" src="{{liked ? '/icons/lightbulb-fill.svg' : '/icons/lightbulb-line.svg'}}" mode="aspectFit" />
+        <view wx:if="{{matched}}" class="unlock-row" catchtap="goChat">
+          <text class="unlock-icon">💡</text>
+          <text class="unlock-text">已配对 · 去聊天</text>
         </view>
-        <block wx:if="{{canComment}}">
-          <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
-          <view class="icon-btn send-btn" catchtap="send" aria-label="发送">
-            <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+        <view wx:elif="{{liked}}" class="footer-liked">
+          <view class="like-status liked">
+            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
           </view>
-        </block>
+          <text class="wait-text">已点亮 · 等待回应</text>
+        </view>
+        <view wx:else class="footer-default">
+          <view class="icon-btn like-btn" bindtap="like" aria-label="点亮">
+            <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
+          </view>
+          <view wx:if="{{canComment}}" class="reply-area">
+            <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
+            <view class="icon-btn send-btn" catchtap="send" aria-label="发送">
+              <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+            </view>
+          </view>
+        </view>
       </view>
     </view>
   </block>

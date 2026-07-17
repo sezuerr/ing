@@ -1,40 +1,128 @@
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 16rpx rgba(255, 193, 7, 0.4), 0 0 40rpx rgba(255, 152, 0, 0.2); }
+  50% { transform: scale(1.12); opacity: 1; box-shadow: 0 0 28rpx rgba(255, 193, 7, 0.7), 0 0 60rpx rgba(255, 152, 0, 0.35); }
+}
+
+@keyframes markerPulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.6); opacity: 0.15; }
+}
+
+.discover-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 28rpx calc(148rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(160deg, #FFF5E1 0%, #FFD700 35%, #FFECB3 60%, #FFB6C1 100%);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== 顶部安全区行 ===== */
+.discover-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10rpx 0 18rpx;
-  background: #fafaf7;
+  padding-bottom: 16rpx;
+  flex: 0 0 auto;
 }
 
-.topbar-title {
+/* ===== 卡片居中容器 ===== */
+.card-stack-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+}
+
+/* ===== 大学/同城切换 ===== */
+.scope-toggle-row {
+  display: flex;
+  gap: 12rpx;
+  align-items: center;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14rpx);
+  -webkit-backdrop-filter: blur(14rpx);
+  padding: 4rpx;
+}
+
+.scope-toggle {
+  padding: 10rpx 30rpx;
+  border-radius: 999rpx;
+  color: #8a806d;
+  font-size: 26rpx;
+  font-weight: 600;
+  transition: all 0.28s ease;
+}
+
+.scope-toggle.on {
+  background: linear-gradient(135deg, #ffc107, #ff9800);
   color: #15130d;
-  font-size: 40rpx;
-  font-weight: 900;
+  font-weight: 800;
+  box-shadow: 0 4rpx 16rpx rgba(255, 152, 0, 0.3);
 }
 
-.filter-btn {
+/* ===== 右上角按钮组 ===== */
+.top-right {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 16rpx;
+}
+
+.circle-btn {
+  display: flex;
   width: 72rpx;
   height: 72rpx;
+  align-items: center;
+  justify-content: center;
   border-radius: 999rpx;
-  background: #f2f1ec;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14rpx);
+  -webkit-backdrop-filter: blur(14rpx);
 }
 
-.filter-icon {
-  width: 40rpx;
-  height: 40rpx;
+.circle-icon {
+  font-size: 32rpx;
+  line-height: 1;
 }
 
+/* ===== 呼吸灯泡 ===== */
+.breathing-bulb {
+  position: relative;
+  display: flex;
+  width: 72rpx;
+  height: 72rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: rgba(255, 216, 77, 0.45);
+  animation: breathe 2.6s ease-in-out infinite;
+}
+
+.bulb-icon {
+  font-size: 36rpx;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.bulb-glow {
+  position: absolute;
+  inset: -8rpx;
+  border-radius: 999rpx;
+  background: radial-gradient(circle, rgba(255, 193, 7, 0.5) 0%, transparent 70%);
+  animation: markerPulse 2.6s ease-in-out infinite;
+}
+
+/* ==================== 卡片区域 ==================== */
 .swipe-area {
-  margin-top: 6rpx;
+  width: 100%;
 }
 
-/* 卡片叠层 */
 .card-stack {
   position: relative;
 }
@@ -43,7 +131,6 @@
   will-change: transform, opacity;
 }
 
-/* 背后的下一张卡片，缩小并置于底层 */
 .card-behind {
   position: absolute;
   top: 0;
@@ -54,7 +141,6 @@
   opacity: 0.6;
 }
 
-/* 顶层可拖拽卡片 */
 .card-front {
   position: relative;
   z-index: 2;
@@ -62,12 +148,13 @@
 }
 
 .swipe-tip {
-  margin-top: 18rpx;
-  color: #8a806d;
+  margin-top: 22rpx;
+  color: #ad9f7b;
   font-size: 24rpx;
   text-align: center;
 }
 
+/* ==================== 空状态 ==================== */
 .empty {
   margin-top: 88rpx;
   padding: 56rpx 28rpx;
@@ -93,7 +180,7 @@
   font-size: 26rpx;
 }
 
-/* 筛选浮层 */
+/* ==================== 筛选浮层 ==================== */
 .sheet-mask {
   position: fixed;
   inset: 0;
@@ -122,7 +209,9 @@
   max-height: 900rpx;
   padding: 0 28rpx calc(40rpx + env(safe-area-inset-bottom));
   border-radius: 32rpx 32rpx 0 0;
-  background: #f2f1ec;
+  background: rgba(242, 241, 236, 0.97);
+  backdrop-filter: saturate(180%) blur(20rpx);
+  -webkit-backdrop-filter: saturate(180%) blur(20rpx);
   transform: translateY(100%);
   transition: transform 0.28s ease;
 }
@@ -131,7 +220,6 @@
   transform: translateY(0);
 }
 
-/* 顶部把手 */
 .sheet-grabber {
   width: 72rpx;
   height: 8rpx;
@@ -169,7 +257,6 @@
   font-weight: 700;
 }
 
-/* 分组标题 */
 .group-label {
   margin: 0 8rpx 12rpx;
   color: #8a806d;
@@ -182,7 +269,6 @@
   margin-top: 32rpx;
 }
 
-/* 卡片容器 */
 .group {
   overflow: hidden;
   border-radius: 24rpx;
@@ -190,7 +276,6 @@
   box-shadow: 0 8rpx 24rpx rgba(21, 19, 13, 0.05);
 }
 
-/* 通用行 */
 .cell {
   position: relative;
   display: flex;
@@ -222,7 +307,6 @@
   height: 48rpx;
 }
 
-/* 选中对勾 */
 .check {
   width: 24rpx;
   height: 14rpx;
@@ -231,4 +315,114 @@
   border-radius: 2rpx;
   transform: rotate(-45deg);
   margin-bottom: 6rpx;
+}
+
+/* ===== 核心圈面板 ===== */
+.circle-sheet {
+  z-index: 102;
+}
+
+.circle-body {
+  flex: 1;
+  padding: 8rpx 0;
+  overflow-y: auto;
+}
+
+.circle-section {
+  padding: 20rpx 4rpx;
+}
+
+.circle-label {
+  color: #8a806d;
+  font-size: 24rpx;
+  font-weight: 600;
+  margin-bottom: 16rpx;
+  letter-spacing: 1rpx;
+}
+
+.passcode-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.passcode-display {
+  flex: 1;
+  height: 92rpx;
+  line-height: 92rpx;
+  padding: 0 32rpx;
+  border-radius: 999rpx;
+  background: #f2efe3;
+  color: #15130d;
+  font-size: 36rpx;
+  font-weight: 900;
+  letter-spacing: 12rpx;
+  text-align: center;
+}
+
+.copy-btn {
+  height: 92rpx;
+  padding: 0 36rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #ffd84d, #ffb300);
+  color: #15130d;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 92rpx;
+  box-shadow: 0 4rpx 16rpx rgba(255, 193, 7, 0.25);
+}
+
+.circle-hint {
+  display: block;
+  margin-top: 12rpx;
+  color: #aaa18e;
+  font-size: 22rpx;
+  line-height: 32rpx;
+}
+
+.circle-divider {
+  height: 2rpx;
+  margin: 0 4rpx;
+  background: rgba(21, 19, 13, 0.07);
+}
+
+.passcode-input {
+  height: 92rpx;
+  padding: 0 32rpx;
+  border-radius: 999rpx;
+  background: #f2efe3;
+  color: #15130d;
+  font-size: 34rpx;
+  font-weight: 800;
+  letter-spacing: 8rpx;
+  text-align: center;
+}
+
+.passcode-verify {
+  height: 88rpx;
+  margin-top: 16rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #15130d, #342e22);
+  color: #ffd84d;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 88rpx;
+  text-align: center;
+  box-shadow: 0 4rpx 16rpx rgba(21, 19, 13, 0.2);
+}
+
+.passcode-result {
+  margin-top: 16rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 38rpx;
+}
+
+.passcode-result.success {
+  color: #2e7d32;
+}
+
+.passcode-result.error {
+  color: #c62828;
 }

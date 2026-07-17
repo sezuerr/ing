@@ -1,10 +1,11 @@
 {
   "pages": [
-    "pages/settings/index",
     "pages/discover/index",
+    "pages/map/index",
     "pages/publish/index",
     "pages/messages/index",
     "pages/profile/index",
+    "pages/settings/index",
     "pages/post-detail/index",
     "pages/chat/index",
     "pages/notification-list/index",
@@ -24,12 +25,12 @@
     "backgroundColor": "#FAFAF7",
     "list": [
       {
-        "pagePath": "pages/settings/index",
-        "text": "设置"
+        "pagePath": "pages/discover/index",
+        "text": "看看"
       },
       {
-        "pagePath": "pages/discover/index",
-        "text": "发现"
+        "pagePath": "pages/map/index",
+        "text": "地图"
       },
       {
         "pagePath": "pages/publish/index",
@@ -37,7 +38,7 @@
       },
       {
         "pagePath": "pages/messages/index",
-        "text": "信息"
+        "text": "消息"
       },
       {
         "pagePath": "pages/profile/index",

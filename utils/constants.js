@@ -1,9 +1,8 @@
 const UNIVERSITIES = [
-  { id: "fudan", name: "复旦大学", cityCode: "shanghai", campus: "邯郸校区", geoHash: "wtw3sj" },
-  { id: "sjtu", name: "上海交通大学", cityCode: "shanghai", campus: "闵行校区", geoHash: "wtw37q" },
-  { id: "tongji", name: "同济大学", cityCode: "shanghai", campus: "四平路校区", geoHash: "wtw3un" },
-  { id: "ecnu", name: "华东师范大学", cityCode: "shanghai", campus: "普陀校区", geoHash: "wtw3s7" },
-  { id: "shufe", name: "上海财经大学", cityCode: "shanghai", campus: "国定路校区", geoHash: "wtw3uy" }
+  { id: "ruc", name: "中国人民大学", cityCode: "beijing", campus: "中关村校区", geoHash: "wx4g0b" },
+  { id: "tsinghua", name: "清华大学", cityCode: "beijing", campus: "清华园", geoHash: "wx4g1c" },
+  { id: "pku", name: "北京大学", cityCode: "beijing", campus: "燕园校区", geoHash: "wx4g0s" },
+  { id: "buaa", name: "北京航空航天大学", cityCode: "beijing", campus: "学院路校区", geoHash: "wx4g1n" }
 ];
 
 const TOPIC_ICONS = ["💡", "☕", "🎧", "📚", "🌙", "⚡"];
@@ -24,8 +23,12 @@ const FEED_SCOPES = [
 const REPORT_REASONS = [
   { value: "porn", label: "色情低俗" },
   { value: "violence", label: "暴力危险" },
+  { value: "harassment", label: "骚扰辱骂" },
   { value: "provocation", label: "引战攻击" },
   { value: "commercial", label: "商业广告" },
+  { value: "fake_info", label: "虚假信息" },
+  { value: "privacy_leak", label: "泄露隐私" },
+  { value: "spam", label: "垃圾刷屏" },
   { value: "not_interested", label: "不感兴趣" }
 ];
 

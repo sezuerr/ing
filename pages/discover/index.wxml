@@ -1,51 +1,105 @@
 <wxs module="swipe" src="./swipe.wxs"></wxs>
 <view class="page discover-page">
-  <view class="topbar">
-    <view class="topbar-title">发现</view>
-    <view class="filter-btn" bindtap="openFilter">
-      <image class="filter-icon" src="/icons/equalizer-2-line.svg" mode="aspectFit" />
+
+  <view class="discover-top" style="padding-top: {{statusBarHeight + 15}}px;">
+    <view class="scope-toggle-row">
+      <view
+        class="scope-toggle {{scopeMode === 'university' ? 'on' : ''}}"
+        data-mode="university"
+        catchtap="switchScopeMode">
+        <text>大学</text>
+      </view>
+      <view
+        class="scope-toggle {{scopeMode === 'city' ? 'on' : ''}}"
+        data-mode="city"
+        catchtap="switchScopeMode">
+        <text>同城</text>
+      </view>
+    </view>
+    <view class="top-right">
+      <view class="circle-btn" catchtap="openCircle">
+        <text class="circle-icon">🔐</text>
+      </view>
+      <view class="breathing-bulb" catchtap="openFilter">
+        <text class="bulb-icon">💡</text>
+        <view class="bulb-glow"></view>
+      </view>
     </view>
   </view>
 
-  <view wx:if="{{currentPost}}" class="swipe-area">
-    <view class="card-stack">
-      <view wx:if="{{nextPost}}" class="card-layer card-behind">
-        <post-card post="{{nextPost}}" />
-      </view>
+  <view class="card-stack-area">
+    <view wx:if="{{currentPost}}" class="swipe-area">
+      <view class="card-stack">
+        <view wx:if="{{nextPost}}" class="card-layer card-behind">
+          <post-card post="{{nextPost}}" />
+        </view>
 
-      <view class="card-layer card-front"
-            data-width="{{windowWidth}}"
-            change:prop="{{swipe.reset}}" prop="{{currentIndex}}"
-            bindtouchstart="{{swipe.touchStart}}"
-            bindtouchmove="{{swipe.touchMove}}"
-            bindtouchend="{{swipe.touchEnd}}">
-        <post-card post="{{currentPost}}" bind:like="likePost" bind:reply="replyPost" bind:report="reportPost" />
+        <view class="card-layer card-front"
+              data-width="{{windowWidth}}"
+              change:prop="{{swipe.reset}}" prop="{{currentIndex}}"
+              catchtouchstart="{{swipe.touchStart}}"
+              catchtouchmove="{{swipe.touchMove}}"
+              catchtouchend="{{swipe.touchEnd}}">
+          <post-card post="{{currentPost}}" bind:like="likePost" bind:reply="replyPost" bind:report="reportPost" bind:gochat="goChat" />
+        </view>
       </view>
+      <view class="swipe-tip">左划看下一张 · 不可回退</view>
     </view>
-    <view class="swipe-tip">左划看下一张 · 不可回退</view>
+
+    <view wx:else class="empty panel">
+      <view class="empty-icon">💡</view>
+      <view class="empty-title">附近暂时安静</view>
+      <view class="empty-copy">换个范围，或者发布一个此刻的想法。</view>
+    </view>
   </view>
 
-  <view wx:else class="empty panel">
-    <view class="empty-icon">💡</view>
-    <view class="empty-title">附近暂时安静</view>
-    <view class="empty-copy">换个范围，或者发布一个此刻的想法。</view>
+  <!-- 核心圈口令面板 -->
+  <view class="sheet-mask {{circleVisible ? 'show' : ''}}" catchtap="closeCircle"></view>
+  <view class="sheet circle-sheet {{circleVisible ? 'show' : ''}}" catchtap="noop">
+    <view class="sheet-header">
+      <view class="sheet-grabber"></view>
+      <view class="sheet-header-row">
+        <view class="sheet-title">核心圈</view>
+        <view class="sheet-close" catchtap="closeCircle">完成</view>
+      </view>
+    </view>
+
+    <view class="circle-body">
+      <view class="circle-section">
+        <view class="circle-label">我的专属口令</view>
+        <view class="passcode-row">
+          <text class="passcode-display">{{myPasscode}}</text>
+          <view class="copy-btn" catchtap="copyPasscode">复制</view>
+        </view>
+        <text class="circle-hint">把口令分享给信任的朋友，他们可以用它添加你</text>
+      </view>
+
+      <view class="circle-divider"></view>
+
+      <view class="circle-section">
+        <view class="circle-label">输入好友口令</view>
+        <input class="passcode-input" value="{{friendPasscode}}" maxlength="6" placeholder="输入6位口令" bindinput="onPasscodeInput" />
+        <view class="passcode-verify" catchtap="verifyPasscode">验证添加</view>
+        <view wx:if="{{passcodeResult}}" class="passcode-result {{passcodeResult.indexOf('已添加') > -1 ? 'success' : 'error'}}">{{passcodeResult}}</view>
+      </view>
+    </view>
   </view>
 
   <!-- 筛选浮层 -->
-  <view class="sheet-mask {{filterVisible ? 'show' : ''}}" bindtap="closeFilter"></view>
+  <view class="sheet-mask {{filterVisible ? 'show' : ''}}" catchtap="closeFilter"></view>
   <view class="sheet {{filterVisible ? 'show' : ''}}" catchtap="noop">
     <view class="sheet-header">
       <view class="sheet-grabber"></view>
       <view class="sheet-header-row">
         <view class="sheet-title">筛选</view>
-        <view class="sheet-close" bindtap="closeFilter">完成</view>
+        <view class="sheet-close" catchtap="closeFilter">完成</view>
       </view>
     </view>
 
     <scroll-view class="sheet-body" scroll-y enhanced show-scrollbar="{{false}}">
       <view class="group-label">话题</view>
       <view class="group">
-        <view class="cell" bindtap="toggleTopicOnly">
+        <view class="cell" catchtap="toggleTopicOnly">
           <view class="cell-title">只看随机话题</view>
           <image class="toggle" src="{{topicOnly ? '/icons/toggle-fill.svg' : '/icons/toggle-line.svg'}}" mode="aspectFit" />
         </view>
@@ -53,7 +107,7 @@
 
       <view class="group-label">浏览范围</view>
       <view class="group">
-        <view wx:for="{{scopes}}" wx:key="value" class="cell {{index < scopes.length - 1 ? 'hairline' : ''}}" data-value="{{item.value}}" bindtap="changeScope">
+        <view wx:for="{{scopes}}" wx:key="value" class="cell {{index < scopes.length - 1 ? 'hairline' : ''}}" data-value="{{item.value}}" catchtap="changeScope">
           <view class="cell-title">{{item.label}}</view>
           <view wx:if="{{scope === item.value}}" class="check"></view>
         </view>

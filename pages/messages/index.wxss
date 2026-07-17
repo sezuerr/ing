@@ -1,7 +1,8 @@
 .quick-row {
   display: flex;
-  padding: 40rpx 40rpx;
+  padding: 40rpx 16rpx;
   margin-bottom: 32rpx;
+  gap: 12rpx;
 }
 
 .quick-item {
@@ -18,7 +19,8 @@
   height: 110rpx;
   align-items: center;
   justify-content: center;
-  border-radius: 20rpx;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 20rpx rgba(21, 19, 13, 0.05);
 }
 
 .quick-icon-glyph {
@@ -27,17 +29,18 @@
 }
 
 .quick-icon-like {
-  background: rgba(255, 103, 77, 0.14);
+  background: linear-gradient(135deg, rgba(255, 103, 77, 0.15), rgba(255, 152, 0, 0.12));
   color: #ff674d;
 }
 
 .quick-icon-reply {
-  background: rgba(74, 144, 226, 0.14);
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(100, 180, 255, 0.1));
   color: #4a90e2;
 }
 
 .quick-icon-match {
-  background: rgba(255, 216, 77, 0.24);
+  background: linear-gradient(135deg, rgba(255, 216, 77, 0.28), rgba(255, 193, 7, 0.18));
+  box-shadow: 0 8rpx 24rpx rgba(255, 193, 7, 0.18);
   color: #b8860b;
 }
 
@@ -47,7 +50,7 @@
   right: 2rpx;
   width: 24rpx;
   height: 24rpx;
-  border: 2rpx solid #fafaf7;
+  border: 2rpx solid #fff9e6;
   border-radius: 999rpx;
   background: #ff4d4f;
 }

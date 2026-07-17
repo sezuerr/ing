@@ -22,10 +22,10 @@ function touchMove(e, owner) {
   var dx = t.pageX - startX
   var dy = t.pageY - startY
 
-  // 首次移动判定方向：竖向为主则交给页面滚动
-  if (!decided && (abs(dx) > 6 || abs(dy) > 6)) {
+  // 首次移动判定方向：横向优先灵敏度 1.3x（disableScroll 下竖向无原生滚动干扰）
+  if (!decided && (abs(dx) > 4 || abs(dy) > 4)) {
     decided = true
-    horizontal = abs(dx) > abs(dy)
+    horizontal = abs(dx) * 1.3 > abs(dy)
   }
   if (!horizontal) return
 

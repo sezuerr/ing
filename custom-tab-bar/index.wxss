@@ -8,9 +8,11 @@
   grid-template-columns: repeat(5, 1fr);
   height: 126rpx;
   padding-bottom: env(safe-area-inset-bottom);
-  border-top: 2rpx solid rgba(21, 19, 13, 0.08);
-  background: rgba(250, 250, 247, 0.96);
-  box-shadow: 0 -12rpx 40rpx rgba(21, 19, 13, 0.06);
+  border-top: 2rpx solid rgba(255, 193, 7, 0.12);
+  background: rgba(255, 249, 230, 0.96);
+  backdrop-filter: saturate(180%) blur(20rpx);
+  -webkit-backdrop-filter: saturate(180%) blur(20rpx);
+  box-shadow: 0 -8rpx 32rpx rgba(255, 193, 7, 0.08);
 }
 
 .tab {
@@ -43,8 +45,8 @@
   height: 96rpx;
   border: 6rpx solid #fff8dc;
   border-radius: 999rpx;
-  background: #ffd84d;
-  box-shadow: 0 14rpx 28rpx rgba(225, 168, 0, 0.28);
+  background: #FFD700;
+  box-shadow: 0 14rpx 28rpx rgba(255, 215, 0, 0.35);
 }
 
 .plus-h,

@@ -1,19 +1,38 @@
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 720rpx;
   box-sizing: border-box;
   overflow: hidden;
-  border-radius: 28rpx;
-  background: #ffffff;
-  box-shadow: 0 18rpx 44rpx rgba(21, 19, 13, 0.09);
+  border-radius: 6rpx 32rpx 6rpx 32rpx;
+  background: linear-gradient(170deg, #fffef8 0%, #fff9e5 35%, #fff3d4 100%);
+  box-shadow:
+    3rpx 4rpx 0 rgba(200, 160, 40, 0.1),
+    6rpx 8rpx 18rpx rgba(0, 0, 0, 0.04),
+    8rpx 12rpx 36rpx rgba(53, 42, 14, 0.06);
+  transform: rotate(-0.6deg);
+  border: 1rpx solid rgba(235, 210, 140, 0.3);
+}
+
+.tape {
+  position: absolute;
+  top: -12rpx;
+  left: 50%;
+  transform: translateX(-50%) rotate(2.5deg);
+  width: 130rpx;
+  height: 34rpx;
+  background: rgba(255, 235, 170, 0.75);
+  border-radius: 3rpx;
+  box-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.06);
+  z-index: 10;
 }
 
 .hero {
   position: relative;
   height: 480rpx;
   overflow: hidden;
-  background: #eee3bf;
+  background: linear-gradient(135deg, #ffe8a0 0%, #ffd84d 40%, #ffb300 100%);
 }
 
 .hero-image {
@@ -27,7 +46,7 @@
   bottom: 0;
   left: 0;
   height: 240rpx;
-  background: linear-gradient(180deg, rgba(21, 19, 13, 0) 0%, rgba(21, 19, 13, 0.6) 100%);
+  background: linear-gradient(180deg, rgba(21, 19, 13, 0) 0%, rgba(21, 19, 13, 0.55) 100%);
 }
 
 .identity {
@@ -50,14 +69,16 @@
   align-items: center;
   justify-content: center;
   border-radius: 999rpx;
-  background: #15130d;
+  background: linear-gradient(135deg, #15130d 0%, #342e22 100%);
   color: #ffd84d;
   font-size: 40rpx;
   font-weight: 800;
+  box-shadow: 0 4rpx 12rpx rgba(21, 19, 13, 0.15);
 }
 
 .avatar-hero {
   background: rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(12rpx);
   color: #ffffff;
 }
 
@@ -78,6 +99,7 @@
 
 .name-hero {
   color: #ffffff;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
 }
 
 .sub {
@@ -114,7 +136,6 @@
   right: 20rpx;
 }
 
-/* hero 图片上方需要白色以保证对比度 */
 .report-icon-hero {
   filter: brightness(0) invert(1) drop-shadow(0 1rpx 3rpx rgba(0, 0, 0, 0.35));
 }
@@ -134,14 +155,14 @@
   flex-direction: column;
   margin-top: -28rpx;
   border-radius: 28rpx 28rpx 0 0;
-  background: #ffffff;
+  background: linear-gradient(170deg, rgba(255, 255, 248, 0.98), rgba(255, 249, 230, 0.98));
 }
 
 .meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20rpx;
+  margin-bottom: 14rpx;
 }
 
 .content {
@@ -151,7 +172,7 @@
 .title-row {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
 .topic-badge {
@@ -162,7 +183,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 999rpx;
-  background: #fff3c4;
+  background: linear-gradient(135deg, #fff3c4, #ffe8a0);
+  box-shadow: 0 4rpx 12rpx rgba(255, 193, 7, 0.2);
 }
 
 .topic-badge-icon {
@@ -180,16 +202,16 @@
 
 .body-text {
   display: block;
-  margin-top: 24rpx;
+  margin-top: 20rpx;
   color: #342e22;
   font-size: 31rpx;
-  line-height: 50rpx;
+  line-height: 52rpx;
   white-space: pre-wrap;
 }
 
 .images {
   width: 100%;
-  margin-top: 24rpx;
+  margin-top: 20rpx;
   white-space: nowrap;
 }
 
@@ -197,16 +219,17 @@
   width: 360rpx;
   height: 270rpx;
   margin-right: 14rpx;
-  border-radius: 16rpx;
+  border-radius: 14rpx;
   background: #eee3bf;
+  display: inline-block;
 }
 
 .footer {
   display: flex;
   align-items: center;
-  gap: 20rpx;
+  gap: 16rpx;
   margin-top: auto;
-  padding-top: 28rpx;
+  padding-top: 24rpx;
 }
 
 .icon-btn {
@@ -225,13 +248,16 @@
   height: 52rpx;
 }
 
-/* 点亮按钮：默认浅色，点亮后变黄填充 */
 .like-btn {
-  background: #f2f1ec;
+  background: rgba(242, 239, 227, 0.9);
+  box-shadow: 0 4rpx 12rpx rgba(255, 193, 7, 0.08);
+  transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .like-btn.liked {
-  background: #ffd84d;
+  background: linear-gradient(135deg, #ffd84d, #ffb300);
+  box-shadow: 0 8rpx 28rpx rgba(255, 193, 7, 0.4);
+  transform: scale(1.06);
 }
 
 .reply-input {
@@ -241,16 +267,82 @@
   box-sizing: border-box;
   padding: 0 32rpx;
   border-radius: 999rpx;
-  background: #f2f1ec;
+  background: rgba(242, 239, 227, 0.9);
+  border: 2rpx solid rgba(255, 193, 7, 0.1);
   color: #15130d;
   font-size: 30rpx;
 }
 
-/* 发送键：深色填充按钮 */
 .send-btn {
-  background: #15130d;
+  background: linear-gradient(135deg, #15130d, #342e22);
+  box-shadow: 0 4rpx 14rpx rgba(21, 19, 13, 0.2);
 }
 
 .send-icon {
   filter: brightness(0) invert(1);
+}
+
+/* ===== 点亮解锁状态 ===== */
+.footer-default,
+.footer-liked {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.reply-area {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.like-status {
+  display: flex;
+  width: 92rpx;
+  height: 92rpx;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  padding: 0;
+}
+
+.like-status.liked {
+  background: linear-gradient(135deg, #ffd84d, #ffb300);
+  box-shadow: 0 8rpx 28rpx rgba(255, 193, 7, 0.4);
+}
+
+.wait-text {
+  flex: 1;
+  min-width: 0;
+  color: #8a806d;
+  font-size: 26rpx;
+  font-weight: 600;
+  text-align: left;
+  padding-left: 12rpx;
+}
+
+.unlock-row {
+  display: flex;
+  width: 100%;
+  height: 92rpx;
+  align-items: center;
+  justify-content: center;
+  gap: 10rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #15130d, #342e22);
+  box-shadow: 0 6rpx 24rpx rgba(21, 19, 13, 0.25);
+}
+
+.unlock-icon {
+  font-size: 32rpx;
+}
+
+.unlock-text {
+  color: #ffd84d;
+  font-size: 30rpx;
+  font-weight: 800;
 }
