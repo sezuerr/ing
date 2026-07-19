@@ -24,7 +24,8 @@ Page({
   },
 
   async load() {
-    const user = getApp().globalData.currentUser || await api.loginAndSyncProfile();
+    const app = getApp();
+    const user = (await app.ensureLogin()) || mock.currentUser;
     const result = await api.getMyPosts();
     this.setData({
       user,

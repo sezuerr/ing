@@ -1,31 +1,44 @@
 const mock = require("./mock");
 
 function canUseCloud() {
+  // 注意：onLaunch 执行期间 App 实例尚未注册完成，getApp() 会返回 undefined。
+  // 此时 wx.cloud.init 已在 onLaunch 里先行执行，故 app 缺失时以 wx.cloud 是否可用兜底。
   const app = getApp();
+  if (!app || !app.globalData) return Boolean(wx.cloud);
   return Boolean(wx.cloud && app.globalData.cloudReady);
 }
 
 function normalizeResult(result, fallback) {
   if (!result || !result.result) return fallback;
   if (result.result.ok === false) {
-    throw new Error(result.result.message || "云函数调用失败");
+    const err = new Error(result.result.message || "云函数调用失败");
+    err.code = result.result.code;
+    err.isBusinessError = true;
+    throw err;
   }
   return result.result.data === undefined ? result.result : result.result.data;
 }
 
 async function callApi(action, data = {}, fallback) {
-  if (!canUseCloud()) return fallback;
+  if (!canUseCloud()) {
+    console.warn(`[cloud:${action}] 云能力不可用，使用本地兜底数据`);
+    return fallback;
+  }
 
+  let result;
   try {
-    const result = await wx.cloud.callFunction({
+    result = await wx.cloud.callFunction({
       name: "api",
       data: { action, payload: data }
     });
-    return normalizeResult(result, fallback);
   } catch (error) {
-    console.warn(`[cloud:${action}] fallback`, error);
+    // 调用本身失败：环境 ID 错误、云函数未部署、网络异常等。降级到 mock。
+    console.error(`[cloud:${action}] 云函数调用失败，已降级到本地数据。请检查：环境 ID 是否正确、api 云函数是否已上传部署。`, error);
     return fallback;
   }
+
+  // 调用成功但返回业务错误（如未登录、权限不足）：抛出，让页面感知，不静默吞掉。
+  return normalizeResult(result, fallback);
 }
 
 function loginAndSyncProfile(profile = {}) {
@@ -107,6 +120,11 @@ function getPostDetail(postId) {
   return callApi("getPostDetail", { postId }, { post, comments });
 }
 
+function getUniversities() {
+  const { UNIVERSITIES } = require("./constants");
+  return callApi("getUniversities", {}, UNIVERSITIES);
+}
+
 module.exports = {
   loginAndSyncProfile,
   updateProfile,
@@ -124,5 +142,6 @@ module.exports = {
   sendMessage,
   unmatchUser,
   getMyPosts,
-  getPostDetail
+  getPostDetail,
+  getUniversities
 };

@@ -1,13 +1,12 @@
-const { UNIVERSITIES } = require("../../utils/constants");
 const api = require("../../utils/cloud");
 
 Page({
   data: {
     genderOptions: ["男", "女", "非二元"],
     genderIndex: 2,
-    universities: UNIVERSITIES,
+    universities: [],
     universityIndex: 0,
-    selectedUniversity: UNIVERSITIES[0],
+    selectedUniversity: null,
     avatarText: "ing",
     bioCount: 0,
     saving: false,
@@ -16,16 +15,21 @@ Page({
       nickName: "",
       gender: "非二元",
       bio: "",
-      universityId: UNIVERSITIES[0].id,
-      cityCode: UNIVERSITIES[0].cityCode
+      universityId: "",
+      cityCode: ""
     }
   },
 
   async onShow() {
     this.setTab();
+
+    // 从云端拉取学校列表，失败则 fallback 到本地常量
+    const universities = await api.getUniversities();
+    const defaultUni = universities[0] || { id: "", name: "", cityCode: "", geoHash: "" };
+
     const user = await api.loginAndSyncProfile();
-    const universityIndex = Math.max(0, UNIVERSITIES.findIndex((item) => item.id === user.universityId));
-    const selectedUniversity = UNIVERSITIES[universityIndex] || UNIVERSITIES[0];
+    const universityIndex = Math.max(0, universities.findIndex((item) => item.id === user.universityId));
+    const selectedUniversity = universities[universityIndex] || defaultUni;
     const profile = {
       ...this.data.profile,
       ...user,
@@ -35,9 +39,10 @@ Page({
     getApp().globalData.currentUser = profile;
     this.setData({
       profile,
-      genderIndex: Math.max(0, this.data.genderOptions.indexOf(profile.gender)),
+      universities,
       universityIndex,
       selectedUniversity,
+      genderIndex: Math.max(0, this.data.genderOptions.indexOf(profile.gender)),
       bioCount: (profile.bio || "").length,
       avatarText: (profile.nickName || "ing").slice(0, 2)
     });
@@ -76,7 +81,8 @@ Page({
 
   onUniversityChange(event) {
     const universityIndex = Number(event.detail.value);
-    const selectedUniversity = UNIVERSITIES[universityIndex];
+    const selectedUniversity = this.data.universities[universityIndex];
+    if (!selectedUniversity) return;
     this.setData({
       universityIndex,
       selectedUniversity,
@@ -95,8 +101,8 @@ Page({
     this.setData({ saving: true });
     const saved = await api.updateProfile({
       ...profile,
-      universityName: selectedUniversity.name,
-      geoHash: selectedUniversity.geoHash
+      universityName: selectedUniversity ? selectedUniversity.name : "",
+      geoHash: selectedUniversity ? selectedUniversity.geoHash : ""
     });
     getApp().globalData.currentUser = saved;
     this.setData({ saving: false });

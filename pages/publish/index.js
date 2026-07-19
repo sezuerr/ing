@@ -110,26 +110,40 @@ Page({
       return;
     }
 
-    const user = getApp().globalData.currentUser || mock.currentUser;
+    const app = getApp();
+    const user = (await app.ensureLogin()) || app.globalData.currentUser || mock.currentUser;
     this.setData({ submitting: true });
-    await api.createPost({
-      ...form,
-      universityId: user.universityId,
-      universityName: user.universityName,
-      cityCode: user.cityCode
-    });
-    this.setData({
-      submitting: false,
-      form: {
-        icon: "💡",
-        title: mock.dailyTopic.title,
-        body: "",
-        imageUrls: [],
-        visibility: "public",
-        geoHash: ""
+
+    try {
+      const created = await api.createPost({
+        ...form,
+        universityId: user.universityId,
+        universityName: user.universityName,
+        cityCode: user.cityCode
+      });
+
+      // 只有真正走通云函数才会拿到服务端 _id；本地兜底会是 local_ 前缀。
+      if (created && typeof created._id === "string" && created._id.startsWith("local_")) {
+        console.warn("[publish] 发布走了本地兜底，未真正写入数据库", created);
       }
-    });
-    wx.showToast({ title: "已发布", icon: "success" });
-    wx.switchTab({ url: "/pages/discover/index" });
+
+      this.setData({
+        form: {
+          icon: "💡",
+          title: mock.dailyTopic.title,
+          body: "",
+          imageUrls: [],
+          visibility: "public",
+          geoHash: ""
+        }
+      });
+      wx.showToast({ title: "已发布", icon: "success" });
+      wx.switchTab({ url: "/pages/discover/index" });
+    } catch (error) {
+      console.error("[publish] 发布失败", error);
+      wx.showToast({ title: error.message || "发布失败，请重试", icon: "none" });
+    } finally {
+      this.setData({ submitting: false });
+    }
   }
 });

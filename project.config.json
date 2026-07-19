@@ -1,5 +1,5 @@
 {
-  "appid": "wx69eab6a614fdc042",
+  "appid": "wx142330d0be83a460",
   "projectname": "ing-campus-social",
   "miniprogramRoot": "./",
   "cloudfunctionRoot": "cloudfunctions/",
@@ -37,5 +37,6 @@
     "include": []
   },
   "editorSetting": {},
-  "libVersion": "3.16.2"
+  "libVersion": "3.16.2",
+  "cloudfunctionTemplateRoot": "cloudfunctionTemplate/"
 }

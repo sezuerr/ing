@@ -556,6 +556,11 @@ async function getPostDetail(openid, payload) {
   return ok({ post, comments: enrichedComments });
 }
 
+async function getUniversities() {
+  const result = await db.collection(C.universities).limit(200).get();
+  return ok(result.data);
+}
+
 const handlers = {
   loginAndSyncProfile,
   updateProfile,
@@ -573,7 +578,8 @@ const handlers = {
   reportPost,
   markPostAction,
   getMyPosts,
-  getPostDetail
+  getPostDetail,
+  getUniversities
 };
 
 exports.main = async (event) => {
