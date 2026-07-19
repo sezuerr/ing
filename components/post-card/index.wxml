@@ -61,14 +61,13 @@
           <text class="wait-text">已点亮</text>
         </view>
         <view wx:else class="footer-default">
-          <view class="icon-btn like-btn {{bulbLit ? 'glow' : ''}}" catchtap="like" aria-label="点亮">
+          <view class="icon-btn like-btn {{bulbLit ? 'glow' : ''}}" hover-class="like-btn-active" catchtap="like" aria-label="点亮">
             <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
           </view>
           <text class="default-bulb-label">{{likedMe ? '回点TA' : '点亮'}}</text>
         </view>
       </view>
 
-      <!-- 自己的帖子：评论列表 -->
       <view wx:if="{{isMine && comments.length}}" class="mine-comments">
         <view wx:for="{{comments}}" wx:key="_id" class="mine-comment">
           <view class="mine-comment-avatar">{{item.fromUser && item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '匿'}}</view>
@@ -137,14 +136,13 @@
           <text class="wait-text">已点亮</text>
         </view>
         <view wx:else class="footer-default">
-          <view class="icon-btn like-btn {{bulbLit ? 'glow' : ''}}" catchtap="like" aria-label="点亮">
+          <view class="icon-btn like-btn {{bulbLit ? 'glow' : ''}}" hover-class="like-btn-active" catchtap="like" aria-label="点亮">
             <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
           </view>
           <text class="default-bulb-label">{{likedMe ? '回点TA' : '点亮'}}</text>
         </view>
       </view>
 
-      <!-- 自己的帖子：评论列表 -->
       <view wx:if="{{isMine && comments.length}}" class="mine-comments">
         <view wx:for="{{comments}}" wx:key="_id" class="mine-comment">
           <view class="mine-comment-avatar">{{item.fromUser && item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '匿'}}</view>

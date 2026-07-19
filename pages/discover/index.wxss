@@ -58,15 +58,15 @@
 .scope-toggle {
   padding: 10rpx 30rpx;
   border-radius: 999rpx;
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 26rpx;
   font-weight: 600;
   transition: all 0.28s ease;
 }
 
 .scope-toggle.on {
-  background: linear-gradient(135deg, #ffc107, #ff9800);
-  color: #15130d;
+  background: var(--color-accent-gradient);
+  color: var(--color-text-primary);
   font-weight: 800;
   box-shadow: 0 4rpx 16rpx rgba(255, 152, 0, 0.3);
 }
@@ -150,14 +150,14 @@
 
 .empty-title {
   margin-top: 12rpx;
-  color: #15130d;
+  color: var(--color-text-primary);
   font-size: 34rpx;
   font-weight: 900;
 }
 
 .empty-copy {
   margin-top: 10rpx;
-  color: #7d735e;
+  color: var(--color-text-tertiary);
   font-size: 26rpx;
 }
 
@@ -227,20 +227,20 @@
 }
 
 .sheet-title {
-  color: #15130d;
+  color: var(--color-text-primary);
   font-size: 34rpx;
   font-weight: 900;
 }
 
 .sheet-close {
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 30rpx;
   font-weight: 700;
 }
 
 .group-label {
   margin: 0 8rpx 12rpx;
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   font-weight: 600;
   letter-spacing: 1rpx;
@@ -278,7 +278,7 @@
 }
 
 .cell-title {
-  color: #15130d;
+  color: var(--color-text-primary);
   font-size: 30rpx;
   font-weight: 500;
 }
@@ -345,7 +345,7 @@
 }
 
 .circle-label {
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   font-weight: 600;
   margin-bottom: 16rpx;
@@ -364,8 +364,8 @@
   line-height: 92rpx;
   padding: 0 32rpx;
   border-radius: 999rpx;
-  background: #f2efe3;
-  color: #15130d;
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
   font-size: 36rpx;
   font-weight: 900;
   letter-spacing: 12rpx;
@@ -402,8 +402,8 @@
   height: 92rpx;
   padding: 0 32rpx;
   border-radius: 999rpx;
-  background: #f2efe3;
-  color: #15130d;
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
   font-size: 34rpx;
   font-weight: 800;
   letter-spacing: 8rpx;
@@ -414,8 +414,8 @@
   height: 88rpx;
   margin-top: 16rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #15130d, #342e22);
-  color: #ffd84d;
+  background: var(--color-dark-fill);
+  color: var(--color-accent-light);
   font-size: 28rpx;
   font-weight: 800;
   line-height: 88rpx;

@@ -1,82 +1,18 @@
 const api = require("../../utils/cloud");
 
-const CAMPUS_STATUSES = [
-  { emoji: "📚", label: "内卷中",     landmark: "求是楼",   body: "在求是楼三楼自习，今天效率好高！" },
-  { emoji: "🏄", label: "冲浪中",     landmark: "明德楼",   body: "明德楼网速真快，摸鱼快乐。" },
-  { emoji: "🚶", label: "想去散步",   landmark: "一勺池",   body: "一勺池旁边的鸽子好肥，想喂。" },
-  { emoji: "🍔", label: "好饿好饿",   landmark: "东区食堂", body: "东区二楼的麻辣香锅排队好长。" },
-  { emoji: "😶", label: "发呆中",     landmark: "百家廊",   body: "坐在百家廊看人来人往，放空 ing。" },
-  { emoji: "🐟", label: "摸鱼中",     landmark: "图书馆",   body: "图书馆负一楼暖气太足，睡着了。" },
-  { emoji: "💻", label: "假装努力中", landmark: "明德楼",   body: "明德楼自习室，电脑开着但人在刷手机。" },
-  { emoji: "🧊", label: "需要一杯冰美式", landmark: "知行楼", body: "知行楼的咖啡机又坏了，需要冰美式续命。" },
-  { emoji: "😴", label: "犯困中",     landmark: "品园宿舍", body: "品园六楼，周末早上真的不想起。" },
-  { emoji: "🍜", label: "嗦粉去",     landmark: "食宝街",   body: "食宝街新开的螺蛳粉店，下课冲！" },
-  { emoji: "🚇", label: "挤地铁",     landmark: "人民大学站", body: "四号线早高峰，人山人海。" },
-  { emoji: "☕", label: "瑞一杯",     landmark: "校外瑞幸", body: "校外瑞幸9.9，比知行楼咖啡机靠谱多了。" },
-  { emoji: "🍢", label: "深夜撸串",   landmark: "北门烧烤", body: "北门外烧烤摊，要了一打羊肉串。" },
-  { emoji: "🏀", label: "打球吗",     landmark: "世纪馆",   body: "世纪馆下午有空的，一起打球。" },
-  { emoji: "🎮", label: "开黑中",     landmark: "品园宿舍", body: "品园宿舍开黑，缺一个辅助！" },
-  { emoji: "🛍️", label: "逛街中",     landmark: "新中关",   body: "新中关B1层，发现一家宝藏店。" },
-  { emoji: "📸", label: "拍银杏",     landmark: "银杏路",   body: "银杏路叶子黄了，拍照的快来。" },
-  { emoji: "😋", label: "在吃瓜",     landmark: "教二草坪", body: "教二草坪坐着吃瓜，今天天气真好。" }
-];
-
-const MOCK_NAMES = ["小黄灯", "清风的歌", "干饭人", "摸鱼王者", "自习战神", "鸽王", "咖啡续命中", "早八起不来", "图书馆常住"];
-
-const EXTERNAL_CENTERS = [
-  { name: "北京大学", lat: 39.986, lng: 116.305, landmarks: ["未名湖", "博雅塔", "燕南园", "农园食堂", "图书馆"] },
-  { name: "清华大学", lat: 40.000, lng: 116.326, landmarks: ["荷塘", "二校门", "紫荆操场", "清芬园", "李文正馆"] },
-  { name: "北京航空航天大学", lat: 39.980, lng: 116.347, landmarks: ["新主楼", "绿园", "体育馆", "合一楼", "沙河校区"] }
-];
-
-const RUC_CENTER_LAT = 39.9705;
-const RUC_CENTER_LNG = 116.3130;
-
-function hashToSeed(str) {
-  var h = 0;
-  for (var i = 0; i < str.length; i++) {
-    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h);
-}
-
 function isWithin3h(ts) {
   return (Date.now() - ts) <= 3 * 60 * 60 * 1000;
-}
-
-function buildCallout(emoji, label, suffix, overridePadding) {
-  var content = emoji + " " + (label || "").slice(0, 4);
-  if (suffix) content += " " + suffix;
-  return {
-    content: content,
-    display: "ALWAYS",
-    padding: overridePadding != null ? overridePadding : 6,
-    borderRadius: 8,
-    bgColor: "#FFF9C4",
-    color: "#333333"
-  };
-}
-
-function randomOffset(seed, offset, spreadDeg) {
-  var factor = spreadDeg / 50;
-  return {
-    lat: ((seed % 100) - 50) * factor,
-    lng: (((seed + offset) * 7 % 100) - 50) * factor
-  };
 }
 
 Page({
   data: {
     mapLongitude: 116.3130,
     mapLatitude: 39.9705,
-    activeTab: "university",
     feedList: [],
-    displayFeedList: [],
     markers: [],
     showPopover: false,
     popoverData: null,
-    popoverDraft: "",
-    mapScale: 16
+    currentUserId: ""
   },
 
   goHome() {
@@ -85,27 +21,42 @@ Page({
 
   _markerIdCounter: 0,
   _markerDataMap: {},
-  _clusterInited: false,
-  _mapCtx: null,
+  _located: false,
 
   onLoad() {
     this.seedMockMarkers();
+    var app = getApp();
+    var cu = app && app.globalData && app.globalData.currentUser;
+    if (cu && cu._id) {
+      this.setData({ currentUserId: cu._id });
+    }
+    this._locateUser();
   },
 
-  onReady() {
-    var mapCtx = wx.createMapContext("campusMap", this);
-    this._mapCtx = mapCtx;
+  _locateUser() {
     var self = this;
-    mapCtx.getScale({
+    wx.getLocation({
+      type: "gcj02",
       success: function(res) {
-        if (res.scale !== self.data.mapScale) {
-          self.setData({ mapScale: res.scale });
-          self.generateMapMarkers();
+        if (!self._located) {
+          self._located = true;
+          self.setData({
+            mapLatitude: res.latitude,
+            mapLongitude: res.longitude
+          });
+        }
+      },
+      fail: function() {
+        if (!self._located) {
+          self._located = true;
+          self.setData({
+            mapLatitude: 39.9705,
+            mapLongitude: 116.3130
+          });
         }
       }
     });
   },
-
 
   onShow() {
     this.setTab();
@@ -136,26 +87,6 @@ Page({
     } catch (e) {}
   },
 
-  _computeDisplayFeed() {
-    var tab = this.data.activeTab;
-    var list = this.data.feedList.filter(function(item) {
-      if (tab === "university") return item.scope === "university";
-      return item.scope === "city";
-    });
-    this.setData({ displayFeedList: list });
-  },
-
-  onTabChange(e) {
-    var selectedTab = e.currentTarget.dataset.tab;
-    var filteredData = this.data.feedList.filter(function(item) {
-      return item.scope === selectedTab;
-    });
-    this.setData({
-      activeTab: selectedTab,
-      displayFeedList: filteredData
-    });
-  },
-
   seedMockMarkers() {
     var now = Date.now();
     var feedList = [
@@ -174,7 +105,6 @@ Page({
     ];
 
     this.setData({ feedList: feedList });
-    this._computeDisplayFeed();
     this.generateMapMarkers();
   },
 
@@ -184,7 +114,6 @@ Page({
     var markers = [];
     this._markerDataMap = {};
     this._markerIdCounter = 0;
-    var scale = this.data.mapScale || 16;
 
     for (var i = 0; i < feedList.length; i++) {
       var item = feedList[i];
@@ -203,58 +132,20 @@ Page({
         height: 1,
         alpha: 0,
         callout: {
-          content: scale >= 17 ? (item.emoji + " " + item.label) : "",
+          content: item.emoji + " " + item.label,
           bgColor: "#FFF9C4",
           color: "#333333",
-          padding: scale >= 17 ? 8 : 0,
+          padding: 8,
           borderRadius: 8,
-          display: scale >= 17 ? "ALWAYS" : "BYCLICK"
+          display: "ALWAYS"
         }
       });
-    }
-
-    if (scale < 17) {
-      var groups = {};
-      var gridSize = scale < 14 ? 0.015 : 0.005;
-      for (var j = 0; j < markers.length; j++) {
-        var m = markers[j];
-        var gridLat = Math.round(m.latitude / gridSize) * gridSize;
-        var gridLng = Math.round(m.longitude / gridSize) * gridSize;
-        var key = gridLat.toFixed(4) + "," + gridLng.toFixed(4);
-        if (!groups[key]) groups[key] = { count: 0, lat: 0, lng: 0 };
-        groups[key].count++;
-        groups[key].lat += m.latitude;
-        groups[key].lng += m.longitude;
-      }
-      for (var key in groups) {
-        var g = groups[key];
-        var cid = 10000 + (++this._markerIdCounter);
-        this._markerDataMap[cid] = { _cluster: true, count: g.count, lat: g.lat / g.count, lng: g.lng / g.count };
-        markers.push({
-          id: cid,
-          latitude: g.lat / g.count,
-          longitude: g.lng / g.count,
-          width: 1,
-          height: 1,
-          callout: {
-            content: String(g.count),
-            color: "#333333",
-            bgColor: "#FFCA28",
-            padding: 6,
-            borderRadius: 50,
-            fontSize: 14,
-            display: "ALWAYS",
-            textAlign: "center"
-          }
-        });
-      }
     }
 
     this.setData({ markers: markers });
   },
 
   async loadFeed() {
-    var burnedIds = this._getBurnedIds();
     var existingIds = {};
     var feedList = this.data.feedList;
     for (var k = 0; k < feedList.length; k++) {
@@ -267,9 +158,6 @@ Page({
     });
     var posts = (result.posts || []).filter(function(p) {
       return p.universityId === "ruc";
-    });
-    posts = posts.filter(function(p) {
-      return burnedIds.indexOf(p._id) === -1;
     });
 
     var newItems = [];
@@ -305,7 +193,6 @@ Page({
       this.setData({ feedList: feedList.concat(newItems) });
     }
 
-    this._computeDisplayFeed();
     this.generateMapMarkers();
   },
 
@@ -325,19 +212,6 @@ Page({
     var data = this._markerDataMap[markerId];
     if (!data) return;
 
-    if (data._cluster) {
-      var self = this;
-      this.setData({
-        mapLatitude: data.lat,
-        mapLongitude: data.lng,
-        mapScale: 17
-      });
-      setTimeout(function() {
-        self.generateMapMarkers();
-      }, 500);
-      return;
-    }
-
     var postId = data.postId || data.id;
     this._burnItem(postId);
 
@@ -345,28 +219,48 @@ Page({
       return item.id !== postId;
     });
     this.setData({ feedList: feedList });
-    this._computeDisplayFeed();
     this.generateMapMarkers();
 
-    wx.navigateTo({ url: "/pages/post-detail/index?id=" + postId });
-  },
+    var post = {
+      _id: data.postId || data.id,
+      icon: data.emoji || "💡",
+      title: data.label || "",
+      body: data.body || "",
+      likeCount: data.likeCount || 0,
+      commentCount: 0,
+      createdAt: data.createdAt || Date.now(),
+      universityName: data.universityName || "",
+      landmark: data.landmark || "",
+      author: {
+        nickName: data.displayName || "同学",
+        avatarUrl: ""
+      },
+      authorId: data.authorId || "",
+      likedMe: data.likedMe || false,
+      likedByMe: data.isLit || false,
+      matched: data.matched || false,
+      distanceText: data.timeText || ""
+    };
 
-  onRegionChange(e) {
-    if (e.type !== "end") return;
-    var mapCtx = this._mapCtx || wx.createMapContext("campusMap", this);
-    if (!mapCtx || !mapCtx.getScale) return;
-    var self = this;
-    mapCtx.getScale({
-      success: function(res) {
-        if (res.scale === self.data.mapScale) return;
-        var prevBelowThreshold = self.data.mapScale < 17;
-        var currBelowThreshold = res.scale < 17;
-        self.setData({ mapScale: res.scale });
-        if (prevBelowThreshold !== currBelowThreshold) {
-          self.generateMapMarkers();
-        }
-      }
+    this.setData({
+      showPopover: true,
+      popoverData: { post: post }
     });
   },
 
+  closePopover() {
+    this.setData({ showPopover: false, popoverData: null });
+  },
+
+  noop() {},
+
+  onPopoverLike(e) {
+    var post = e.detail.post;
+    if (post && post._id) {
+      api.likePost(post._id);
+    }
+  },
+
+  onRegionChange(e) {
+  }
 });

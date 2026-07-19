@@ -1,5 +1,7 @@
 {
   "navigationStyle": "custom",
   "disableScroll": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "post-card": "/components/post-card/index"
+  }
 }

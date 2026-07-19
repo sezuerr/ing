@@ -69,8 +69,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #15130d 0%, #342e22 100%);
-  color: #ffd84d;
+  background: var(--color-dark-fill);
+  color: var(--color-accent-light);
   font-size: 40rpx;
   font-weight: 800;
   box-shadow: 0 4rpx 12rpx rgba(21, 19, 13, 0.15);
@@ -79,7 +79,7 @@
 .avatar-hero {
   background: rgba(255, 255, 255, 0.28);
   backdrop-filter: blur(12rpx);
-  color: #ffffff;
+  color: var(--color-text-inverse);
 }
 
 .meta-text {
@@ -89,7 +89,7 @@
 
 .name {
   overflow: hidden;
-  color: #15130d;
+  color: var(--color-text-primary);
   font-size: 28rpx;
   font-weight: 800;
   line-height: 38rpx;
@@ -98,13 +98,13 @@
 }
 
 .name-hero {
-  color: #ffffff;
+  color: var(--color-text-inverse);
   text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.2);
 }
 
 .sub {
   overflow: hidden;
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 22rpx;
   line-height: 30rpx;
   text-overflow: ellipsis;
@@ -146,6 +146,7 @@
   flex-direction: column;
   box-sizing: border-box;
   padding: 24rpx;
+  overflow: hidden;
 }
 
 .body-floating {
@@ -194,7 +195,7 @@
 
 .title {
   flex: 1;
-  color: #15130d;
+  color: var(--color-text-primary);
   font-size: 42rpx;
   font-weight: 900;
   line-height: 54rpx;
@@ -230,6 +231,8 @@
   gap: 16rpx;
   margin-top: auto;
   padding-top: 24rpx;
+  position: relative;
+  z-index: 5;
 }
 
 .icon-btn {
@@ -241,6 +244,8 @@
   justify-content: center;
   border-radius: 999rpx;
   padding: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .footer-icon {
@@ -249,8 +254,8 @@
 }
 
 .like-btn {
-  background: rgba(242, 239, 227, 0.9);
-  box-shadow: 0 4rpx 12rpx rgba(255, 193, 7, 0.08);
+  background: var(--color-accent-soft);
+  box-shadow: 0 4rpx 12rpx var(--color-accent-shadow);
   transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -258,7 +263,20 @@
 .like-status.liked.glow {
   background: linear-gradient(135deg, #ffd84d, #ffb300) !important;
   box-shadow: 0 8rpx 28rpx rgba(255, 193, 7, 0.5) !important;
+  filter: drop-shadow(0 0 16rpx rgba(255, 193, 7, 0.5));
   transform: scale(1.06);
+  animation: bulbGlowPulse 2.2s ease-in-out infinite;
+}
+
+@keyframes bulbGlowPulse {
+  0%, 100% { box-shadow: 0 8rpx 28rpx rgba(255, 193, 7, 0.5); filter: drop-shadow(0 0 16rpx rgba(255, 193, 7, 0.5)); }
+  50% { box-shadow: 0 8rpx 48rpx rgba(255, 193, 7, 0.75), 0 0 60rpx rgba(255, 152, 0, 0.4); filter: drop-shadow(0 0 28rpx rgba(255, 193, 7, 0.75)); }
+}
+
+.like-btn-active {
+  transform: scale(0.88) !important;
+  opacity: 0.75;
+  transition: all 0.12s ease;
 }
 
 .reply-input {
@@ -268,14 +286,14 @@
   box-sizing: border-box;
   padding: 0 32rpx;
   border-radius: 999rpx;
-  background: rgba(242, 239, 227, 0.9);
-  border: 2rpx solid rgba(255, 193, 7, 0.1);
-  color: #15130d;
+  background: var(--color-accent-soft);
+  border: 2rpx solid var(--color-accent-border);
+  color: var(--color-text-primary);
   font-size: 30rpx;
 }
 
 .send-btn {
-  background: linear-gradient(135deg, #15130d, #342e22);
+  background: var(--color-dark-fill);
   box-shadow: 0 4rpx 14rpx rgba(21, 19, 13, 0.2);
 }
 
@@ -293,6 +311,8 @@
   justify-content: center;
   gap: 8rpx;
   padding: 20rpx 0;
+  position: relative;
+  z-index: 5;
 }
 
 .icon-btn.like-btn {
@@ -331,7 +351,7 @@
 }
 
 .like-status.liked {
-  background: linear-gradient(135deg, #ffd84d, #ffb300);
+  background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
   box-shadow: 0 8rpx 28rpx rgba(255, 193, 7, 0.4);
   animation: bulbGlow 2.2s ease-in-out infinite;
 }
@@ -343,13 +363,13 @@
 
 .default-bulb-label {
   text-align: center;
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
 }
 
 .wait-text {
   text-align: center;
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 26rpx;
   font-weight: 600;
   text-align: left;
@@ -378,13 +398,13 @@
 }
 
 .mine-stat-count {
-  color: #ffb300;
+  color: var(--color-accent-dark);
   font-size: 30rpx;
   font-weight: 800;
 }
 
 .mine-stat-label {
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
 }
 
@@ -414,8 +434,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #15130d, #342e22);
-  color: #ffd84d;
+  background: var(--color-dark-fill);
+  color: var(--color-accent-light);
   font-size: 22rpx;
   font-weight: 800;
 }
@@ -426,7 +446,7 @@
 }
 
 .mine-comment-name {
-  color: #15130d;
+  color: var(--color-text-primary);
   font-size: 22rpx;
   font-weight: 800;
   line-height: 32rpx;
@@ -446,8 +466,8 @@
   padding: 2rpx 12rpx;
   margin-left: 10rpx;
   border-radius: 6rpx;
-  background: linear-gradient(135deg, #ffd84d, #ffb300);
-  color: #15130d;
+  background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
+  color: var(--color-text-primary);
   font-size: 20rpx;
   font-weight: 600;
   vertical-align: middle;
@@ -459,7 +479,7 @@
   margin-left: 10rpx;
   border-radius: 6rpx;
   background: rgba(21, 19, 13, 0.06);
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 20rpx;
   font-weight: 500;
   vertical-align: middle;
@@ -484,7 +504,7 @@
 .matched-row .icon-btn.like-btn.liked {
   width: 92rpx;
   height: 92rpx;
-  background: linear-gradient(135deg, #ffd84d, #ffb300);
+  background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
   box-shadow: 0 8rpx 28rpx rgba(255, 193, 7, 0.4);
   display: flex;
   align-items: center;
@@ -503,7 +523,7 @@
 }
 
 .unlock-text {
-  color: #ffd84d;
+  color: var(--color-accent-light);
   font-size: 30rpx;
   font-weight: 800;
 }

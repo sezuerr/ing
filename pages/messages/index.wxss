@@ -1,7 +1,7 @@
 .messages-page {
   min-height: 100vh;
   box-sizing: border-box;
-  background: #fff9e6;
+  background: var(--color-surface);
   padding: calc(140rpx + env(safe-area-inset-top)) 28rpx calc(148rpx + env(safe-area-inset-bottom));
 }
 
@@ -36,13 +36,13 @@
 }
 
 .quick-icon-like {
-  background: linear-gradient(135deg, rgba(255, 103, 77, 0.15), rgba(255, 152, 0, 0.12));
-  color: #ff674d;
+  background: linear-gradient(135deg, var(--color-danger-soft), rgba(255, 152, 0, 0.12));
+  color: var(--color-danger-light);
 }
 
 .quick-icon-reply {
-  background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(100, 180, 255, 0.1));
-  color: #4a90e2;
+  background: linear-gradient(135deg, var(--color-info-soft), rgba(100, 180, 255, 0.1));
+  color: var(--color-info);
 }
 
 .quick-icon-match {
@@ -57,21 +57,21 @@
   right: 2rpx;
   width: 24rpx;
   height: 24rpx;
-  border: 2rpx solid #fff9e6;
+  border: 2rpx solid var(--color-surface);
   border-radius: 999rpx;
-  background: #ff4d4f;
+  background: var(--color-danger);
 }
 
 .quick-label {
   margin-top: 12rpx;
-  color: #15130d;
+  color: var(--color-text-primary);
   font-size: 28rpx;
   font-weight: 450;
 }
 
 .messages-page .section-title {
   margin-bottom: 6rpx;
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 24rpx;
   font-weight: 600;
 }
@@ -82,7 +82,7 @@
 
 .empty-row {
   padding: 34rpx 4rpx;
-  color: #8a806d;
+  color: var(--color-text-secondary);
   font-size: 26rpx;
   text-align: center;
 }

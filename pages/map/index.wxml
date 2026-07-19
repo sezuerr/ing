@@ -4,16 +4,28 @@
     class="campus-map"
     latitude="{{mapLatitude}}"
     longitude="{{mapLongitude}}"
-    scale="{{16}}"
+    scale="16"
     show-scale="{{true}}"
     markers="{{markers}}"
     bindmarkertap="onMarkerTap"
     bindcallouttap="onCalloutTap"
     bindregionchange="onRegionChange"
   />
-  <view class="map-hint">双指缩放 · 拖动探索 · 点击查看</view>
 
   <view class="corner-bulb" catchtap="goHome">
     <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit"></image>
+  </view>
+
+  <view class="popover-overlay {{showPopover ? 'show' : ''}}" catchtap="closePopover">
+    <view wx:if="{{popoverData}}" class="popover-card-wrapper" catchtap="noop">
+      <view class="popover-card-close" catchtap="closePopover">
+        <text class="popover-card-close-x">✕</text>
+      </view>
+      <post-card
+        post="{{popoverData.post}}"
+        currentUserId="{{currentUserId}}"
+        bind:like="onPopoverLike"
+      />
+    </view>
   </view>
 </view>

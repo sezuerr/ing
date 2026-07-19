@@ -12,8 +12,8 @@
   width: 72px;
   align-items: center;
   justify-content: center;
-  background: #ff4d4f;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
   font-size: 26rpx;
   font-weight: 700;
 }
@@ -24,8 +24,8 @@
   display: flex;
   align-items: center;
   padding: 20rpx 4rpx;
-  background: #fafaf7;
-  border-bottom: 2rpx solid rgba(21, 19, 13, 0.08);
+  background: var(--color-card-bg);
+  border-bottom: 2rpx solid var(--color-border);
   transition: transform 0.15s ease-out;
 }
 
@@ -41,8 +41,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 22rpx;
-  background: #15130d;
-  color: #ffd84d;
+  background: var(--color-text-primary);
+  color: var(--color-accent-light);
   font-weight: 900;
 }
 
@@ -59,7 +59,7 @@
 }
 
 .name {
-  color: #15130d;
+  color: var(--color-text-primary);
   font-size: 30rpx;
   font-weight: 850;
 }
@@ -83,7 +83,7 @@
   overflow: hidden;
   min-width: 0;
   flex: 1;
-  color: #7d735e;
+  color: var(--color-text-tertiary);
   font-size: 24rpx;
   line-height: 34rpx;
   text-overflow: ellipsis;
@@ -97,8 +97,8 @@
   padding: 0 8rpx;
   margin-left: 12rpx;
   border-radius: 999rpx;
-  background: #ff674d;
-  color: #fff;
+  background: var(--color-danger-light);
+  color: var(--color-text-inverse);
   font-size: 20rpx;
   line-height: 32rpx;
   text-align: center;
