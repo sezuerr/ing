@@ -70,7 +70,6 @@ Component({
       this.setData({ liked: true, bulbLit: true });
       wx.showToast({ title: "已点亮 💡", icon: "none", duration: 1500 });
 
-      // 对方已点亮过你，则互相点亮 → 配对成功
       if (this.data.likedMe) {
         this.setData({ matched: true, canComment: true });
         this.triggerEvent("match", { post: this.data.post });
@@ -99,6 +98,8 @@ Component({
 
     openReport() {
       this.triggerEvent("report", { post: this.data.post });
-    }
+    },
+
+    noop() {}
   }
 });

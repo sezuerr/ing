@@ -44,7 +44,7 @@
           <text class="mine-stat-label">{{post.commentCount || 0}} 条私密回复</text>
         </view>
         <view wx:elif="{{matched}}" class="matched-row">
-          <view class="icon-btn like-btn liked" catchtap="goChat">
+          <view class="icon-btn like-btn liked">
             <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
           </view>
           <view class="reply-area">
@@ -119,7 +119,7 @@
           <text class="mine-stat-label">{{post.commentCount || 0}} 条私密回复</text>
         </view>
         <view wx:elif="{{matched}}" class="matched-row">
-          <view class="icon-btn like-btn liked" catchtap="goChat">
+          <view class="icon-btn like-btn liked">
             <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
           </view>
           <view class="reply-area">
