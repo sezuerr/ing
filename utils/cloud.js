@@ -88,7 +88,8 @@ function sendMessage(payload) {
 }
 
 function getMessages(payload) {
-  return callApi("getMessages", payload, { messages: [] });
+  var msgs = (mock.messages || []).filter(function(m) { return m.conversationId === payload.conversationId; });
+  return callApi("getMessages", payload, { messages: msgs });
 }
 
 function unmatchUser(payload) {
@@ -102,7 +103,8 @@ function getMyPosts() {
 function getPostDetail(postId) {
   const allPosts = mock.posts.concat(mock.myPosts);
   const post = allPosts.find((item) => item._id === postId) || allPosts[0];
-  return callApi("getPostDetail", { postId }, { post, comments: [] });
+  const comments = mock.comments ? mock.comments.filter((c) => c.postId === postId) : [];
+  return callApi("getPostDetail", { postId }, { post, comments });
 }
 
 module.exports = {

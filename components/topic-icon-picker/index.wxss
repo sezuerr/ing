@@ -2,8 +2,7 @@
   position: relative;
 }
 
-.current,
-.option {
+.current {
   display: flex;
   width: 88rpx;
   height: 88rpx;
@@ -12,28 +11,61 @@
   box-sizing: border-box;
   border: 2rpx solid #eadfb8;
   border-radius: 999rpx;
-  background: #fff8dc;
+  background: linear-gradient(135deg, #fff3c4, #ffe8a0);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.current:active {
+  transform: scale(0.92);
+}
+
+.current-icon {
   font-size: 42rpx;
-  line-height: 88rpx;
-  padding: 0;
+  line-height: 1;
 }
 
 .options {
   position: absolute;
   top: 102rpx;
   left: 0;
-  z-index: 5;
-  display: grid;
-  grid-template-columns: repeat(3, 88rpx);
-  gap: 12rpx;
-  padding: 14rpx;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  width: 336rpx;
+  gap: 10rpx;
+  padding: 16rpx;
   border: 2rpx solid #eadfb8;
-  border-radius: 16rpx;
-  background: #fffdf7;
-  box-shadow: 0 12rpx 28rpx rgba(45, 37, 17, 0.12);
+  border-radius: 20rpx;
+  background: #fffef8;
+  box-shadow: 0 12rpx 32rpx rgba(45, 37, 17, 0.14);
 }
 
-.selected {
+.option {
+  display: flex;
+  width: 72rpx;
+  height: 72rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: rgba(242, 239, 227, 0.8);
+  border: 2rpx solid rgba(235, 210, 140, 0.2);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.option:active {
+  transform: scale(0.92);
+}
+
+.option.selected {
+  background: linear-gradient(135deg, #ffd84d, #ffb300);
   border-color: #e7b900;
-  background: #ffd84d;
+  box-shadow: 0 4rpx 16rpx rgba(255, 193, 7, 0.35);
+  transform: scale(1.08);
+}
+
+.option-emoji {
+  font-size: 34rpx;
+  line-height: 1;
 }

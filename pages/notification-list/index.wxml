@@ -1,4 +1,8 @@
 <view class="page notification-list-page">
+  <view class="back-row" catchtap="goBack">
+    <text class="back-arrow">←</text>
+    <text class="back-label">{{pageTitle}}</text>
+  </view>
   <view class="list">
     <notification-item wx:for="{{notifications}}" wx:key="_id" item="{{item}}" bind:open="openNotification" bind:avatar="openActor" />
     <view wx:if="{{!notifications.length}}" class="empty-row">暂时没有相关消息</view>

@@ -1,3 +1,10 @@
+.messages-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: #fff9e6;
+  padding: calc(140rpx + env(safe-area-inset-top)) 28rpx calc(148rpx + env(safe-area-inset-bottom));
+}
+
 .quick-row {
   display: flex;
   padding: 40rpx 16rpx;

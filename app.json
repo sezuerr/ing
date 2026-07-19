@@ -12,8 +12,9 @@
     "pages/user-profile/index"
   ],
   "window": {
+    "navigationStyle": "custom",
     "navigationBarTitleText": "",
-    "navigationBarBackgroundColor": "#FFD84D",
+    "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTextStyle": "black",
     "backgroundColor": "#FAFAF7",
     "backgroundTextStyle": "dark"

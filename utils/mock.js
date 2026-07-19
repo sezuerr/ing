@@ -17,7 +17,7 @@ const myPosts = [
     createdAt: now - 1000 * 60 * 60 * 3,
     distanceText: "距你1公里内",
     likeCount: 6,
-    commentCount: 1
+    commentCount: 2
   },
   {
     _id: "post_mine_2",
@@ -33,7 +33,7 @@ const myPosts = [
     createdAt: now - 1000 * 60 * 60 * 5,
     distanceText: "距你0.5公里内",
     likeCount: 4,
-    commentCount: 3
+    commentCount: 2
   }
 ];
 
@@ -75,6 +75,7 @@ const posts = [
     distanceText: "距你1公里内",
     mutualFriendCount: 3,
     likedMe: true,
+    matched: true,
     likeCount: 8,
     commentCount: 2
   },
@@ -151,6 +152,7 @@ const posts = [
     distanceText: "距你1公里内",
     mutualFriendCount: 4,
     likedMe: false,
+    matched: true,
     likeCount: 9,
     commentCount: 1
   },
@@ -189,6 +191,7 @@ const posts = [
     distanceText: "距你0.9公里内",
     mutualFriendCount: 2,
     likedMe: true,
+    matched: true,
     likeCount: 12,
     commentCount: 5
   },
@@ -208,6 +211,7 @@ const posts = [
     distanceText: "距你0.4公里内",
     mutualFriendCount: 0,
     likedMe: false,
+    matched: true,
     likeCount: 18,
     commentCount: 8
   },
@@ -294,13 +298,80 @@ const conversations = [
     lastMessage: { text: "求是楼门口 9 点见？", createdAt: now - 1000 * 60 * 7 },
     unreadCount: 2,
     status: "active"
+  },
+  {
+    _id: "conv_2",
+    peerId: "user_x",
+    peer: { nickName: "匿名用户#a3f8", avatarUrl: "" },
+    lastMessage: { text: "明德楼的灯真好看，一起走走吗？", createdAt: now - 1000 * 60 * 30 },
+    unreadCount: 1,
+    status: "active",
+    postId: "post_mine_1"
+  },
+  {
+    _id: "conv_3",
+    peerId: "user_y",
+    peer: { nickName: "匿名用户#b7c2", avatarUrl: "" },
+    lastMessage: { text: "我也喜欢在一勺池发呆，下次可以一起", createdAt: now - 1000 * 60 * 60 * 2 },
+    unreadCount: 0,
+    status: "active",
+    postId: "post_mine_2"
   }
+];
+
+// 当前用户的帖子收到的评论/私密回复
+const comments = [
+  {
+    _id: "comment_m1_1",
+    postId: "post_mine_1",
+    fromUser: { nickName: "匿名同学", avatarUrl: "" },
+    content: "明德楼的灯真好看，一起走走吗？",
+    createdAt: now - 1000 * 60 * 30
+  },
+  {
+    _id: "comment_m1_2",
+    postId: "post_mine_1",
+    fromUser: { nickName: "匿名同学", avatarUrl: "" },
+    content: "你在几楼呀？",
+    createdAt: now - 1000 * 60 * 25
+  },
+  {
+    _id: "comment_m2_1",
+    postId: "post_mine_2",
+    fromUser: { nickName: "匿名同学", avatarUrl: "" },
+    content: "我也喜欢在一勺池发呆，下次可以一起",
+    createdAt: now - 1000 * 60 * 60 * 2
+  },
+  {
+    _id: "comment_m2_2",
+    postId: "post_mine_2",
+    fromUser: { nickName: "匿名同学", avatarUrl: "" },
+    content: "鸽子真的好胖哈哈",
+    createdAt: now - 1000 * 60 * 60 * 1
+  }
+];
+
+// 聊天消息
+const messages = [
+  // conv_2：晚风 (post_mine_1)
+  { _id: "msg_2_1", conversationId: "conv_2", fromPeer: true, content: "明德楼的灯真好看，一起走走吗？", createdAt: now - 1000 * 60 * 30 },
+  { _id: "msg_2_2", conversationId: "conv_2", fromPeer: true, content: "你在几楼呀？", createdAt: now - 1000 * 60 * 25 },
+  { _id: "msg_2_3", conversationId: "conv_2", fromPeer: false, content: "三楼靠窗的位置", createdAt: now - 1000 * 60 * 20 },
+  { _id: "msg_2_4", conversationId: "conv_2", fromPeer: true, content: "好的我过来看看 😊", createdAt: now - 1000 * 60 * 18 },
+  // conv_3：月光 (post_mine_2)
+  { _id: "msg_3_1", conversationId: "conv_3", fromPeer: true, content: "我也喜欢在一勺池发呆，下次可以一起", createdAt: now - 1000 * 60 * 60 * 2 },
+  { _id: "msg_3_2", conversationId: "conv_3", fromPeer: false, content: "哈哈好啊，你经常去吗", createdAt: now - 1000 * 60 * 60 * 1.8 },
+  { _id: "msg_3_3", conversationId: "conv_3", fromPeer: true, content: "每周日下午会去坐一会儿", createdAt: now - 1000 * 60 * 60 * 1.5 },
+  { _id: "msg_3_4", conversationId: "conv_3", fromPeer: true, content: "鸽子真的好胖哈哈", createdAt: now - 1000 * 60 * 60 * 1 },
+  { _id: "msg_3_5", conversationId: "conv_3", fromPeer: false, content: "确实，被喂得太好了", createdAt: now - 1000 * 60 * 60 * 0.8 }
 ];
 
 module.exports = {
   currentUser,
   posts,
   myPosts,
+  comments,
+  messages,
   notifications,
   conversations,
   universities: UNIVERSITIES,

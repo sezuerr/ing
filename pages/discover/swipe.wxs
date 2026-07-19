@@ -51,10 +51,13 @@ function touchMove(e, owner) {
 function touchEnd(e, owner) {
   if (!dragging) return
   dragging = false
-  if (!horizontal) return
 
   var t = e.changedTouches[0]
   var dx = t.pageX - startX
+
+  // 非横向滑动（竖向滚动）或位移很小 → 视为点击，放行 tap 事件
+  if (!horizontal || (dx > -20 && dx < 20)) return
+
   var width = (e.currentTarget.dataset.width || 375) * 1
   var front = owner.selectComponent('.card-front')
   if (!front) return

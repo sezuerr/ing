@@ -101,5 +101,22 @@ Page({
     getApp().globalData.currentUser = saved;
     this.setData({ saving: false });
     wx.showToast({ title: "已保存", icon: "success" });
+  },
+
+  logout() {
+    wx.showModal({
+      title: "退出登录",
+      content: "确定要退出登录吗？",
+      success(res) {
+        if (res.confirm) {
+          wx.clearStorageSync();
+          wx.reLaunch({ url: "/pages/login/index" });
+        }
+      }
+    });
+  },
+
+  goBack() {
+    wx.navigateBack({ delta: 1 });
   }
 });

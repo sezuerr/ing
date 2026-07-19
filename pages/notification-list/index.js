@@ -9,12 +9,14 @@ const TITLES = {
 Page({
   data: {
     type: "like",
+    pageTitle: "新增点亮",
     notifications: []
   },
 
   async onLoad(options) {
     const type = options.type || "like";
-    this.setData({ type });
+    const pageTitle = TITLES[type] || "消息";
+    this.setData({ type, pageTitle });
     wx.setNavigationBarTitle({ title: TITLES[type] || "消息" });
     await this.load();
     api.markNotificationsRead({ type });
@@ -30,6 +32,10 @@ Page({
     if (item.postId) {
       wx.navigateTo({ url: `/pages/post-detail/index?id=${item.postId}` });
     }
+  },
+
+  goBack() {
+    wx.navigateBack();
   },
 
   openActor(event) {

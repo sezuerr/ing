@@ -4,13 +4,13 @@ Component({
   properties: {
     value: {
       type: String,
-      value: "💡"
+      value: ""
     }
   },
 
   data: {
-    open: false,
-    icons: TOPIC_ICONS
+    icons: TOPIC_ICONS,
+    open: false
   },
 
   methods: {
@@ -20,8 +20,8 @@ Component({
 
     selectIcon(event) {
       const icon = event.currentTarget.dataset.icon;
+      this.triggerEvent("change", { value: icon === this.data.value ? "" : icon });
       this.setData({ open: false });
-      this.triggerEvent("change", { value: icon });
     }
   }
 });

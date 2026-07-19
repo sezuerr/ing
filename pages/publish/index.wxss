@@ -1,5 +1,5 @@
 .editor {
-  padding: 24rpx;
+  padding: 28rpx;
   background: rgba(255, 255, 255, 0.78);
   backdrop-filter: saturate(180%) blur(20rpx);
   -webkit-backdrop-filter: saturate(180%) blur(20rpx);
@@ -7,6 +7,25 @@
   box-shadow:
     0 16rpx 48rpx rgba(255, 193, 7, 0.1),
     0 4rpx 14rpx rgba(21, 19, 13, 0.05);
+}
+
+.editor-section {
+  padding: 20rpx 0;
+  border-bottom: 2rpx solid rgba(255, 193, 7, 0.1);
+}
+
+.editor-section:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.section-label {
+  color: #8a806d;
+  font-size: 22rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  margin-bottom: 14rpx;
+  text-transform: uppercase;
 }
 
 .topic-row {
@@ -62,28 +81,25 @@
   border-radius: 24rpx;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 8rpx 24rpx rgba(255, 193, 7, 0.06);
+  overflow: hidden;
 }
 
-.location {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.location-text {
+  display: block;
   margin-top: 20rpx;
   color: #7d735e;
   font-size: 24rpx;
-}
-
-.locate {
-  width: 150rpx;
-  height: 58rpx;
-  margin: 0;
-  font-size: 22rpx;
-  line-height: 54rpx;
-  padding: 0;
 }
 
 .submit {
   margin-top: 28rpx;
   background: linear-gradient(135deg, #ffc107, #ff9800) !important;
   box-shadow: 0 12rpx 28rpx rgba(255, 152, 0, 0.28) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.publish-page {
+  padding-top: calc(120rpx + env(safe-area-inset-top));
 }

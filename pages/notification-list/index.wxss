@@ -1,3 +1,32 @@
+.notification-list-page {
+  padding-top: calc(120rpx + env(safe-area-inset-top));
+}
+
+.back-row {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  margin-bottom: 24rpx;
+  cursor: pointer;
+}
+
+.back-row:active {
+  opacity: 0.6;
+}
+
+.back-arrow {
+  color: #15130d;
+  font-size: 36rpx;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.back-label {
+  color: #15130d;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
 .list {
   background: transparent;
 }

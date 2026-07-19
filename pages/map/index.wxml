@@ -1,4 +1,7 @@
 <view class="map-page">
+  <view class="corner-bulb" catchtap="goHome">
+    <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit"></image>
+  </view>
   <view class="map-container" style="padding-top: {{statusBarHeight + 100}}px;">
     <movable-area class="map-canvas" scale-area>
       <movable-view
@@ -55,43 +58,5 @@
       </movable-view>
     </movable-area>
     <view class="map-hint">双指缩放 · 拖动探索 · 放大散开</view>
-  </view>
-
-  <!-- ====== 原位放大镜弹窗 ====== -->
-  <view class="popover-overlay {{showPopover ? 'visible' : ''}}" catchtap="closePopover">
-    <view class="popover-card {{showPopover ? 'pop-in' : ''}}" catchtap="noop">
-      <view wx:if="{{popoverData}}" class="popover-inner">
-        <view class="popover-header">
-          <view class="popover-avatar">{{popoverData.avatarText || '?'}}</view>
-          <view class="popover-meta">
-            <text class="popover-name">{{popoverData.displayName || '同学'}}</text>
-            <text class="popover-time">{{popoverData.timeText}} · {{popoverData.universityName || ''}}</text>
-          </view>
-        </view>
-
-        <view class="popover-landmark" wx:if="{{popoverData.landmark}}">
-          <text>📍 {{popoverData.landmark}}</text>
-        </view>
-
-        <view class="popover-body">
-          <text>{{popoverData.body || '这个人很懒，什么都没写。'}}</text>
-        </view>
-
-        <view class="popover-footer">
-          <view class="popover-like-btn" catchtap="likeFromPopover">
-            <text class="popover-like-icon">💡</text>
-            <text class="popover-like-text">点亮</text>
-          </view>
-          <input
-            class="popover-reply-input"
-            value="{{popoverDraft}}"
-            placeholder="私密回复…"
-            confirm-type="send"
-            bindinput="onPopoverDraft"
-            bindconfirm="replyFromPopover"
-          />
-        </view>
-      </view>
-    </view>
   </view>
 </view>

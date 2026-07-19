@@ -1,63 +1,44 @@
 <view class="page detail-page" wx:if="{{post}}">
-  <view class="panel post">
-    <view class="author-row">
-      <view class="author-avatar">{{post.author && post.author.nickName ? post.author.nickName.slice(0, 1) : '匿'}}</view>
-      <view class="author-info">
-        <view class="author-name">{{post.author && post.author.isFriend ? (post.author.nickName || '好友') : (post.likedMe ? '点亮过你的同学' : '匿名同学')}}</view>
-        <view class="author-meta">{{timeText}} · {{post.universityName || '未知学校'}} · {{post.distanceText || ''}}</view>
-      </view>
-    </view>
-
-    <view class="landmark" wx:if="{{post.landmark}}">
-      <text>📍 {{post.landmark}}</text>
-    </view>
-
-    <view class="title-row">
-      <text class="icon">{{post.icon || '💡'}}</text>
-      <text class="title">{{post.title}}</text>
-    </view>
-    <text class="body">{{post.body}}</text>
-    <scroll-view wx:if="{{post.imageUrls && post.imageUrls.length}}" scroll-x class="images">
-      <image wx:for="{{post.imageUrls}}" wx:key="*this" class="image" mode="aspectFill" src="{{item}}" />
-    </scroll-view>
-
-    <view class="meta-stats">
-      <text class="stat">💡 {{post.likeCount || 0}} 点亮</text>
-      <text class="stat">💬 {{post.commentCount || 0}} 评论</text>
-      <text class="stat vis-tag">{{post.visibility === 'public' ? '全平台' : post.visibility === 'university' ? '本校' : post.visibility === 'friends' ? '好友' : '私密'}}</text>
-    </view>
-
-    <view class="actions">
-      <view class="action {{liked ? 'liked' : 'like'}}" catchtap="likePost">
-        <text>💡</text>
-        <text>{{liked ? '已点亮' : '点亮'}}</text>
-      </view>
-      <view class="action" catchtap="replyPost">
-        <text>✈</text>
-        <text>{{canComment ? '回复' : '互亮后可回复'}}</text>
-      </view>
-    </view>
+  <view class="back-row" catchtap="goBack">
+    <text class="back-arrow">←</text>
+    <text class="back-label">返回</text>
   </view>
 
-  <view class="section">
-    <view class="section-title">收到的评论 ({{comments.length}})</view>
-    <view wx:if="{{comments.length}}" class="panel comments">
-      <view wx:for="{{comments}}" wx:key="_id" class="comment">
-        <view class="comment-avatar">{{item.fromUser && item.fromUser.nickName ? item.fromUser.nickName.slice(0, 1) : '友'}}</view>
-        <view class="comment-right">
-          <view class="comment-name">{{item.fromUser ? (item.fromUser.nickName || '好友') : '好友'}}</view>
-          <text class="comment-body">{{item.content}}</text>
+  <!-- 复用发现页卡片组件 -->
+  <view class="card-wrapper">
+    <post-card
+      post="{{post}}"
+      comments="{{comments}}"
+      currentUserId="{{currentUserId}}"
+      bind:like="onLike"
+      bind:match="onMatch"
+      bind:reply="onReply"
+      bind:gochat="onGoChat"
+      bind:report="onReport"
+    />
+  </view>
+
+  <!-- 举报浮层 -->
+  <view class="sheet-mask {{reportVisible ? 'show' : ''}}" catchtap="closeReport"></view>
+  <view class="sheet report-sheet {{reportVisible ? 'show' : ''}}" catchtap="noop">
+    <view class="sheet-header">
+      <view class="sheet-grabber"></view>
+      <view class="sheet-header-row">
+        <view class="sheet-title">举报</view>
+        <view class="sheet-close" catchtap="closeReport">取消</view>
+      </view>
+    </view>
+    <scroll-view class="sheet-body" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="report-reason-list">
+        <view
+          wx:for="{{reportReasons}}"
+          wx:key="value"
+          class="report-reason-item"
+          data-value="{{item.value}}"
+          catchtap="submitReport">
+          <text class="report-reason-label">{{item.label}}</text>
         </view>
       </view>
-    </view>
-    <view wx:else class="empty-state">
-      <text class="empty-icon">💌</text>
-      <text class="empty-title">还没有评论</text>
-      <text class="empty-desc">有人点亮你的帖子并发送私密回复后，评论会显示在这里</text>
-    </view>
-  </view>
-
-  <view class="report-entry" catchtap="reportPost">
-    <text>🚩 举报或不感兴趣</text>
+    </scroll-view>
   </view>
 </view>

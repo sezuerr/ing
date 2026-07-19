@@ -5,7 +5,7 @@ const UNIVERSITIES = [
   { id: "buaa", name: "北京航空航天大学", cityCode: "beijing", campus: "学院路校区", geoHash: "wx4g1n" }
 ];
 
-const TOPIC_ICONS = ["💡", "☕", "🎧", "📚", "🌙", "⚡"];
+const TOPIC_ICONS = ["💡", "☕", "🎧", "📚", "🌙", "⚡", "🍔", "🐟", "😶", "🧊", "🏄", "😴", "🚶"];
 
 const VISIBILITY_OPTIONS = [
   { value: "self", label: "仅自己可见" },

@@ -1,4 +1,9 @@
 <view class="page settings-page">
+  <view class="back-row" catchtap="goBack">
+    <text class="back-arrow">←</text>
+    <text class="back-label">返回</text>
+  </view>
+
   <view class="group-label">个人资料</view>
   <view class="group">
     <view class="cell hairline">
@@ -45,4 +50,8 @@
   </view>
 
   <button class="primary-btn save" bindtap="saveProfile" loading="{{saving}}">保存资料</button>
+
+  <view class="logout-area">
+    <button class="logout-btn" bindtap="logout">退出登录</button>
+  </view>
 </view>

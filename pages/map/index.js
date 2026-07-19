@@ -42,10 +42,11 @@ Page({
     allMarkers: [],
     clusteredMarkers: [],
     currentScale: 1,
-    showPopover: false,
-    popoverData: null,
-    popoverDraft: "",
     statusBarHeight: 0
+  },
+
+  goHome() {
+    wx.switchTab({ url: "/pages/discover/index" });
   },
 
   _scaleTimer: null,
@@ -213,53 +214,6 @@ Page({
       this.computeClustered(1.8);
       return;
     }
-    var marker = null;
-    for (var i = 0; i < this.data.allMarkers.length; i++) {
-      if (this.data.allMarkers[i].id === id) {
-        marker = this.data.allMarkers[i];
-        break;
-      }
-    }
-    if (!marker) return;
-    this.setData({
-      showPopover: true,
-      popoverData: marker,
-      popoverDraft: ""
-    });
-  },
-
-  closePopover() {
-    this.setData({ showPopover: false });
-    var self = this;
-    setTimeout(function() {
-      self.setData({ popoverData: null });
-    }, 350);
-  },
-
-  onPopoverDraft(e) {
-    this.setData({ popoverDraft: e.detail.value });
-  },
-
-  likeFromPopover() {
-    var data = this.data.popoverData;
-    if (!data) return;
-    var postId = data.postId || data.id;
-    api.likePost(postId).then(function(r) {
-      wx.showToast({ title: r && r.matched ? "配对成功" : "已点亮", icon: "none" });
-    });
-  },
-
-  replyFromPopover() {
-    var data = this.data.popoverData;
-    var draft = this.data.popoverDraft.trim();
-    if (!draft || !data) return;
-    var postId = data.postId || data.id;
-    api.sendPrivateReply({ postId: postId, content: draft }).then(function() {
-      wx.showToast({ title: "已发送", icon: "success" });
-      this.setData({ popoverDraft: "" });
-      this.closePopover();
-    }.bind(this));
-  },
-
-  noop() {}
+    wx.navigateTo({ url: "/pages/post-detail/index?id=" + id });
+  }
 });

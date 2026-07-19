@@ -13,7 +13,7 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 0 28rpx calc(148rpx + env(safe-area-inset-bottom));
+  padding: calc(96rpx + env(safe-area-inset-top)) 28rpx calc(148rpx + env(safe-area-inset-bottom));
   background: linear-gradient(160deg, #FFF5E1 0%, #FFD700 35%, #FFECB3 60%, #FFB6C1 100%);
   height: 100vh;
   overflow: hidden;
@@ -22,10 +22,12 @@
 /* ===== 顶部安全区行 ===== */
 .discover-top {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 16rpx;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-bottom: 8rpx;
   flex: 0 0 auto;
+  position: relative;
+  z-index: 10;
 }
 
 /* ===== 卡片居中容器 ===== */
@@ -66,11 +68,13 @@
   box-shadow: 0 4rpx 16rpx rgba(255, 152, 0, 0.3);
 }
 
-/* ===== 右上角按钮组 ===== */
-.top-right {
+/* ===== 顶部操作按钮组 ===== */
+.top-row-actions {
   display: flex;
   align-items: center;
   gap: 16rpx;
+  margin-top: 20rpx;
+  align-self: flex-start;
 }
 
 .circle-btn {
@@ -86,37 +90,11 @@
 }
 
 .circle-icon {
-  font-size: 32rpx;
-  line-height: 1;
+  width: 40rpx;
+  height: 40rpx;
 }
 
 /* ===== 呼吸灯泡 ===== */
-.breathing-bulb {
-  position: relative;
-  display: flex;
-  width: 72rpx;
-  height: 72rpx;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999rpx;
-  background: rgba(255, 216, 77, 0.45);
-  animation: breathe 2.6s ease-in-out infinite;
-}
-
-.bulb-icon {
-  font-size: 36rpx;
-  line-height: 1;
-  position: relative;
-  z-index: 1;
-}
-
-.bulb-glow {
-  position: absolute;
-  inset: -8rpx;
-  border-radius: 999rpx;
-  background: radial-gradient(circle, rgba(255, 193, 7, 0.5) 0%, transparent 70%);
-  animation: markerPulse 2.6s ease-in-out infinite;
-}
 
 /* ==================== 卡片区域 ==================== */
 .swipe-area {
@@ -307,6 +285,37 @@
   height: 48rpx;
 }
 
+.topic-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  margin-top: 20rpx;
+  padding: 0 8rpx;
+}
+
+.topic-filter-icon {
+  display: flex;
+  width: 88rpx;
+  height: 88rpx;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 14rpx rgba(21, 19, 13, 0.08);
+  transition: all 0.25s ease;
+}
+
+.topic-filter-icon.on {
+  background: linear-gradient(135deg, #ffd84d, #ffb300);
+  box-shadow: 0 6rpx 20rpx rgba(255, 193, 7, 0.45);
+  transform: scale(1.1);
+}
+
+.topic-filter-emoji {
+  font-size: 36rpx;
+  line-height: 1;
+}
+
 .check {
   width: 24rpx;
   height: 14rpx;
@@ -425,4 +434,35 @@
 
 .passcode-result.error {
   color: #c62828;
+}
+
+/* ===== 举报浮层 ===== */
+.report-sheet .sheet-body {
+  padding-bottom: 40rpx;
+}
+
+.report-reason-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+}
+
+.report-reason-item {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 32rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 248, 0.6);
+  cursor: pointer;
+}
+
+.report-reason-item:active {
+  background: rgba(255, 216, 77, 0.2);
+}
+
+.report-reason-label {
+  color: #342e22;
+  font-size: 30rpx;
+  font-weight: 500;
+  line-height: 40rpx;
 }

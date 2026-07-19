@@ -1,5 +1,6 @@
-const { FEED_SCOPES, REPORT_REASONS } = require("../../utils/constants");
+const { FEED_SCOPES, REPORT_REASONS, TOPIC_ICONS } = require("../../utils/constants");
 const api = require("../../utils/cloud");
+const mock = require("../../utils/mock");
 
 function isWithin24h(ts) {
   return (Date.now() - ts) < 24 * 60 * 60 * 1000;
@@ -40,11 +41,18 @@ function isWithin24h(ts) {
 
 Page({
   data: {
+    currentUserId: "",
     scopes: FEED_SCOPES,
     scope: "university",
     scopeMode: "university",
     topicOnly: false,
+    topicIcons: TOPIC_ICONS,
+    topicSelected: {},
+    topicIconValue: undefined,
     filterVisible: false,
+    reportVisible: false,
+    reportPost: null,
+    reportReasons: REPORT_REASONS,
     posts: [],
     currentIndex: 0,
     currentPost: null,
@@ -68,6 +76,14 @@ Page({
   },
 
   onShow() {
+    var app = getApp();
+    var cu = app && app.globalData && app.globalData.currentUser;
+    if (!cu || !cu._id) {
+      cu = mock.currentUser;
+    }
+    if (cu && cu._id) {
+      this.setData({ currentUserId: cu._id });
+    }
     this.setTab();
     this.loadFeed();
   },
@@ -88,7 +104,8 @@ Page({
   async loadFeed() {
     var result = await api.getDiscoverFeed({
       scope: this.data.scope,
-      topicOnly: this.data.topicOnly
+      topicOnly: this.data.topicOnly,
+      topicIcon: this.data.topicIconValue
     });
     var posts = (result.posts || []).filter(function(p) {
       return isWithin24h(new Date(p.createdAt).getTime());
@@ -97,6 +114,16 @@ Page({
     if (this.data.scopeMode === "university") {
       posts = posts.filter(function(p) {
         return p.universityId === "ruc";
+      });
+    }
+
+    // 前端话题筛选（后端未支持时作为 fallback）
+    var topicIconVal = this.data.topicIconValue;
+    if (topicIconVal) {
+      var selectedIcons = topicIconVal.split(",");
+      posts = posts.filter(function(p) {
+        var postIcon = p.topicIcon || p.icon;
+        return postIcon && selectedIcons.indexOf(postIcon) !== -1;
       });
     }
 
@@ -109,7 +136,7 @@ Page({
   },
 
   openFilter() {
-    this.setData({ filterVisible: true });
+    this.setData({ filterVisible: true, topicSelected: {} });
   },
 
   closeFilter() {
@@ -184,6 +211,20 @@ Page({
     this.loadFeed();
   },
 
+  selectTopic(event) {
+    var icon = event.currentTarget.dataset.icon;
+    var obj = Object.assign({}, this.data.topicSelected);
+    var sel = obj[icon] ? false : true;
+    obj[icon] = sel;
+    var vals = [];
+    for (var k in obj) { if (obj[k]) vals.push(k); }
+    this.setData({
+      topicSelected: obj,
+      topicIconValue: vals.length ? vals.join(",") : undefined
+    });
+    this.loadFeed();
+  },
+
   onSwipedAway() {
     var post = this.data.currentPost;
     if (post) api.markPostAction({ postId: post._id, action: "swiped" });
@@ -224,15 +265,20 @@ Page({
 
   reportPost(event) {
     var post = event.detail.post;
-    var self = this;
-    wx.showActionSheet({
-      itemList: REPORT_REASONS.map(function(item) { return item.label; }),
-      success: async function(res) {
-        var reason = REPORT_REASONS[res.tapIndex];
-        await api.reportPost({ postId: post._id, reason: reason.value });
-        wx.showToast({ title: reason.value === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
-        self.nextPost();
-      }
-    });
+    this.setData({ reportVisible: true, reportPost: post });
+  },
+
+  closeReport() {
+    this.setData({ reportVisible: false });
+  },
+
+  async submitReport(event) {
+    var reasonVal = event.currentTarget.dataset.value;
+    var post = this.data.reportPost;
+    if (!post) return;
+    await api.reportPost({ postId: post._id, reason: reasonVal });
+    wx.showToast({ title: reasonVal === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
+    this.setData({ reportVisible: false });
+    this.nextPost();
   }
 });

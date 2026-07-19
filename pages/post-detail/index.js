@@ -1,69 +1,75 @@
-const api = require("../../utils/cloud");
-const { fromNow } = require("../../utils/time");
 const { REPORT_REASONS } = require("../../utils/constants");
+const api = require("../../utils/cloud");
+const mock = require("../../utils/mock");
 
 Page({
   data: {
     post: null,
     comments: [],
-    canComment: false,
-    timeText: "",
-    liked: false
+    reportVisible: false,
+    reportReasons: REPORT_REASONS,
+    reportPost: null
   },
 
   async onLoad(options) {
     var id = options.id;
+    var app = getApp();
+    var cu = app && app.globalData && app.globalData.currentUser;
+    if (!cu || !cu._id) {
+      cu = mock.currentUser;
+    }
+    var currentUserId = cu && cu._id ? cu._id : "";
     var result = await api.getPostDetail(id);
     var post = result.post || {};
     var comments = result.comments || [];
-    var user = getApp().globalData.currentUser || {};
-    var isMine = post.authorId === (user._id || user.openid);
-    var isFriend = post.author && post.author.isFriend;
+    if (!post.matched) post.matched = post.matched || false;
+    this.setData({ post, comments, currentUserId: currentUserId });
+  },
 
-    this.setData({
-      post: post,
-      comments: comments,
-      canComment: isFriend || isMine,
-      timeText: fromNow(post.createdAt),
-      liked: post.likedMe || false
+  // post-card 组件事件转发
+  onLike(event) {
+    var post = event.detail.post;
+    // 已在组件内处理 toast
+  },
+
+  onMatch(event) {
+    var post = event.detail.post;
+    wx.showToast({ title: "配对成功，可以聊天了", icon: "none" });
+  },
+
+  onReply(event) {
+    var post = event.detail.post;
+    var content = event.detail.content;
+    api.sendPrivateReply({ postId: post._id, content: content }).then(function() {
+      wx.showToast({ title: "已发送", icon: "success" });
     });
   },
 
-  async likePost() {
-    var post = this.data.post;
-    if (this.data.liked) return;
-    var result = await api.likePost(post._id);
-    this.setData({ liked: true });
-    wx.showToast({ title: result && result.matched ? "配对成功" : "已点亮", icon: "none" });
+  onGoChat(event) {
+    var post = event.detail.post;
+    wx.navigateTo({ url: "/pages/chat/index?peerId=" + post.authorId });
   },
 
-  replyPost() {
-    if (!this.data.canComment) {
-      wx.showToast({ title: "互亮后才能回复", icon: "none" });
-      return;
-    }
-    var self = this;
-    wx.showModal({
-      title: "私密回复",
-      editable: true,
-      placeholderText: "只会发给帖主",
-      success: async function(res) {
-        if (!res.confirm || !res.content) return;
-        await api.sendPrivateReply({ postId: self.data.post._id, content: res.content });
-        wx.showToast({ title: "已发送", icon: "success" });
-      }
-    });
+  onReport(event) {
+    var post = event.detail ? (event.detail.post || this.data.post) : this.data.post;
+    this.setData({ reportVisible: true, reportPost: post });
   },
 
-  reportPost() {
-    var self = this;
-    wx.showActionSheet({
-      itemList: REPORT_REASONS.map(function(item) { return item.label; }),
-      success: async function(res) {
-        var reason = REPORT_REASONS[res.tapIndex];
-        await api.reportPost({ postId: self.data.post._id, reason: reason.value });
-        wx.showToast({ title: reason.value === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
-      }
-    });
+  closeReport() {
+    this.setData({ reportVisible: false });
+  },
+
+  async submitReport(event) {
+    var reasonVal = event.currentTarget.dataset.value;
+    var post = this.data.reportPost;
+    if (!post) return;
+    await api.reportPost({ postId: post._id, reason: reasonVal });
+    wx.showToast({ title: reasonVal === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
+    this.setData({ reportVisible: false });
+  },
+
+  noop() {},
+  goBack() {
+    wx.navigateBack();
   }
 });

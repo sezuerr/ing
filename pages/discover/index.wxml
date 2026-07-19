@@ -1,7 +1,10 @@
 <wxs module="swipe" src="./swipe.wxs"></wxs>
 <view class="page discover-page">
+  <view class="corner-bulb">
+    <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit"></image>
+  </view>
 
-  <view class="discover-top" style="padding-top: {{statusBarHeight + 15}}px;">
+  <view class="discover-top" style="padding-top: {{statusBarHeight + 5}}px;">
     <view class="scope-toggle-row">
       <view
         class="scope-toggle {{scopeMode === 'university' ? 'on' : ''}}"
@@ -16,13 +19,12 @@
         <text>同城</text>
       </view>
     </view>
-    <view class="top-right">
+    <view class="top-row-actions">
       <view class="circle-btn" catchtap="openCircle">
-        <text class="circle-icon">🔐</text>
+        <image class="circle-icon" src="/icons/links-line.svg" mode="aspectFit" />
       </view>
-      <view class="breathing-bulb" catchtap="openFilter">
-        <text class="bulb-icon">💡</text>
-        <view class="bulb-glow"></view>
+      <view class="circle-btn" catchtap="openFilter">
+        <image class="circle-icon" src="/icons/grid-line.svg" mode="aspectFit" />
       </view>
     </view>
   </view>
@@ -31,16 +33,16 @@
     <view wx:if="{{currentPost}}" class="swipe-area">
       <view class="card-stack">
         <view wx:if="{{nextPost}}" class="card-layer card-behind">
-          <post-card post="{{nextPost}}" />
+          <post-card post="{{nextPost}}" currentUserId="{{currentUserId}}" />
         </view>
 
         <view class="card-layer card-front"
               data-width="{{windowWidth}}"
               change:prop="{{swipe.reset}}" prop="{{currentIndex}}"
-              catchtouchstart="{{swipe.touchStart}}"
-              catchtouchmove="{{swipe.touchMove}}"
-              catchtouchend="{{swipe.touchEnd}}">
-          <post-card post="{{currentPost}}" bind:like="likePost" bind:reply="replyPost" bind:report="reportPost" bind:gochat="goChat" />
+              bindtouchstart="{{swipe.touchStart}}"
+              bindtouchmove="{{swipe.touchMove}}"
+              bindtouchend="{{swipe.touchEnd}}">
+          <post-card post="{{currentPost}}" currentUserId="{{currentUserId}}" bind:like="likePost" bind:reply="replyPost" bind:report="reportPost" bind:gochat="goChat" />
         </view>
       </view>
       <view class="swipe-tip">左划看下一张 · 不可回退</view>
@@ -104,12 +106,39 @@
           <image class="toggle" src="{{topicOnly ? '/icons/toggle-fill.svg' : '/icons/toggle-line.svg'}}" mode="aspectFit" />
         </view>
       </view>
+      <view class="topic-filter-row">
+        <view
+          wx:for="{{topicIcons}}"
+          wx:key="*this"
+          class="topic-filter-icon {{topicSelected[item] ? 'on' : ''}}"
+          data-icon="{{item}}"
+          catchtap="selectTopic">
+          <text class="topic-filter-emoji">{{item}}</text>
+        </view>
+      </view>
 
-      <view class="group-label">浏览范围</view>
-      <view class="group">
-        <view wx:for="{{scopes}}" wx:key="value" class="cell {{index < scopes.length - 1 ? 'hairline' : ''}}" data-value="{{item.value}}" catchtap="changeScope">
-          <view class="cell-title">{{item.label}}</view>
-          <view wx:if="{{scope === item.value}}" class="check"></view>
+    </scroll-view>
+  </view>
+
+  <!-- 举报浮层 -->
+  <view class="sheet-mask {{reportVisible ? 'show' : ''}}" catchtap="closeReport"></view>
+  <view class="sheet report-sheet {{reportVisible ? 'show' : ''}}" catchtap="noop">
+    <view class="sheet-header">
+      <view class="sheet-grabber"></view>
+      <view class="sheet-header-row">
+        <view class="sheet-title">举报</view>
+        <view class="sheet-close" catchtap="closeReport">取消</view>
+      </view>
+    </view>
+    <scroll-view class="sheet-body" scroll-y enhanced show-scrollbar="{{false}}">
+      <view class="report-reason-list">
+        <view
+          wx:for="{{reportReasons}}"
+          wx:key="value"
+          class="report-reason-item"
+          data-value="{{item.value}}"
+          catchtap="submitReport">
+          <text class="report-reason-label">{{item.label}}</text>
         </view>
       </view>
     </scroll-view>

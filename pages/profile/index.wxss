@@ -1,29 +1,33 @@
-.header-bar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-bottom: 4rpx;
-}
-
-.header-spacer {
-  flex: 1;
+.profile-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: #fff9e6;
+  padding: calc(180rpx + env(safe-area-inset-top)) 28rpx calc(148rpx + env(safe-area-inset-bottom));
 }
 
 .settings-entry {
   display: flex;
-  width: 56rpx;
-  height: 56rpx;
+  width: auto;
+  height: 48rpx;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   border-radius: 999rpx;
   background: rgba(255, 216, 77, 0.2);
-  padding: 16rpx;
-  box-sizing: content-box;
+  padding: 0 20rpx;
+  gap: 6rpx;
+  margin-right: auto;
+}
+
+.settings-text {
+  color: #8a806d;
+  font-size: 24rpx;
+  font-weight: 500;
 }
 
 .settings-icon {
-  width: 44rpx;
-  height: 44rpx;
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .header {
@@ -79,6 +83,8 @@
 }
 
 .stats-row {
+  display: flex;
+  align-items: center;
   margin-top: 10rpx;
 }
 

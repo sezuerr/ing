@@ -5,44 +5,75 @@ Component({
     post: {
       type: Object,
       value: null
+    },
+    currentUserId: {
+      type: String,
+      value: ""
+    },
+    comments: {
+      type: Array,
+      value: []
     }
   },
 
   observers: {
     post(post) {
       if (!post) return;
-      const isFriend = Boolean(post.author && post.author.isFriend);
-      const name = isFriend
-        ? post.author.nickName || "好友"
-        : post.likedMe
-          ? "点亮过你的同学"
-          : `${post.mutualFriendCount || 0} 个共同好友`;
+      var currentUserId = this.data.currentUserId;
+      var isMine = currentUserId && post.authorId === currentUserId;
+      var isFriend = Boolean(post.author && post.author.isFriend);
+      var likedMe = Boolean(post.likedMe);
+      var name;
+      if (isMine) {
+        name = post.author && post.author.nickName ? post.author.nickName : "我";
+      } else if (isFriend) {
+        name = post.author.nickName || "好友";
+      } else if (likedMe) {
+        name = "点亮过你的同学";
+      } else {
+        name = (post.mutualFriendCount || 0) + " 个共同好友";
+      }
       this.setData({
-        canComment: isFriend,
+        isMine: isMine,
+        canComment: isFriend || likedMe || isMine,
         matched: post.matched || false,
+        likedMe: likedMe,
         displayName: name,
-        avatarText: isFriend ? (name || "友").slice(0, 1).toUpperCase() : "匿",
+        avatarText: isMine ? (name || "我").slice(0, 1).toUpperCase() : (isFriend ? (name || "友").slice(0, 1).toUpperCase() : "匿"),
         timeText: fromNow(post.createdAt),
         liked: false,
+        bulbLit: false,
         draft: ""
       });
     }
   },
 
   data: {
+    isMine: false,
     canComment: false,
     matched: false,
+    likedMe: false,
     displayName: "",
     avatarText: "匿",
     timeText: "",
     liked: false,
+    bulbLit: false,
     draft: ""
   },
 
   methods: {
     like() {
       if (this.data.liked || this.data.matched) return;
-      this.setData({ liked: true });
+      this.setData({ liked: true, bulbLit: true });
+      wx.showToast({ title: "已点亮 💡", icon: "none", duration: 1500 });
+
+      // 对方已点亮过你，则互相点亮 → 配对成功
+      if (this.data.likedMe) {
+        this.setData({ matched: true, canComment: true });
+        this.triggerEvent("match", { post: this.data.post });
+        return;
+      }
+
       this.triggerEvent("like", { post: this.data.post });
     },
 

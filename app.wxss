@@ -11,9 +11,15 @@ button {
 }
 
 .page {
+  position: relative;
   min-height: 100vh;
   box-sizing: border-box;
   padding: 24rpx 28rpx calc(148rpx + env(safe-area-inset-bottom));
+}
+
+/* 自定义导航栏模式下给页面顶部留出状态栏空间 */
+.page-custom-nav {
+  padding-top: calc(96rpx + env(safe-area-inset-top));
 }
 
 .section {
@@ -84,6 +90,28 @@ button {
 
 .hairline:last-child {
   border-bottom: 0;
+}
+
+/* 主页面左上角灯泡图标 */
+.corner-bulb {
+  position: absolute;
+  top: calc(16rpx + env(safe-area-inset-top));
+  left: 28rpx;
+  z-index: 50;
+  width: 72rpx;
+  height: 72rpx;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #ffd84d, #ffb300);
+  box-shadow: 0 8rpx 28rpx rgba(255, 193, 7, 0.4);
+}
+
+.corner-bulb .footer-icon {
+  width: 52rpx;
+  height: 52rpx;
 }
 
 .input,
