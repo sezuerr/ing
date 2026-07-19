@@ -23,6 +23,7 @@ Component({
       var isMine = currentUserId && post.authorId === currentUserId;
       var isFriend = Boolean(post.author && post.author.isFriend);
       var likedMe = Boolean(post.likedMe);
+      var likedByMe = Boolean(post.likedByMe);
       var name;
       if (isMine) {
         name = post.author && post.author.nickName ? post.author.nickName : "我";
@@ -38,6 +39,7 @@ Component({
         canComment: isFriend || likedMe || isMine,
         matched: post.matched || false,
         likedMe: likedMe,
+        likedByMe: likedByMe,
         displayName: name,
         avatarText: isMine ? (name || "我").slice(0, 1).toUpperCase() : (isFriend ? (name || "友").slice(0, 1).toUpperCase() : "匿"),
         timeText: fromNow(post.createdAt),
@@ -56,6 +58,7 @@ Component({
     displayName: "",
     avatarText: "匿",
     timeText: "",
+    likedByMe: false,
     liked: false,
     bulbLit: false,
     draft: ""

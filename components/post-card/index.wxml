@@ -13,6 +13,7 @@
           <view class="name name-hero">
             {{displayName}}
             <text wx:if="{{likedMe && !matched}}" class="liked-me-badge">点亮过你</text>
+            <text wx:elif="{{likedByMe && !likedMe && !matched}}" class="liked-me-badge">点亮过ta</text>
             <text wx:elif="{{!likedMe && !matched && !isMine}}" class="not-liked-badge">未点亮</text>
           </view>
           <view class="sub sub-hero">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
@@ -89,6 +90,7 @@
             <view class="name">
             {{displayName}}
             <text wx:if="{{likedMe && !matched}}" class="liked-me-badge">点亮过你</text>
+            <text wx:elif="{{likedByMe && !likedMe && !matched}}" class="liked-me-badge">点亮过ta</text>
             <text wx:elif="{{!likedMe && !matched && !isMine}}" class="not-liked-badge">未点亮</text>
           </view>
             <view class="sub">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>

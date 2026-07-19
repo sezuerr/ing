@@ -95,6 +95,7 @@ const posts = [
     distanceText: "距你0.8公里内",
     mutualFriendCount: 2,
     likedMe: false,
+    likedByMe: true,
     likeCount: 11,
     commentCount: 4
   },

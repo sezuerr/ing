@@ -233,10 +233,15 @@ Page({
 
   nextPost() {
     var nextIndex = this.data.currentIndex + 1;
+    var posts = this.data.posts;
+    if (!posts.length) return;
+    // 循环：翻完回到第一张
+    var wrappedIndex = nextIndex % posts.length;
+    var nextWrappedIndex = (nextIndex + 1) % posts.length;
     this.setData({
-      currentIndex: nextIndex,
-      currentPost: this.data.posts[nextIndex] || null,
-      nextPost: this.data.posts[nextIndex + 1] || null
+      currentIndex: wrappedIndex,
+      currentPost: posts[wrappedIndex] || null,
+      nextPost: posts[nextWrappedIndex] || null
     });
   },
 

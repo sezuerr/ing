@@ -45,11 +45,14 @@
   display: flex;
   gap: 12rpx;
   align-items: center;
+  align-self: flex-start;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(14rpx);
   -webkit-backdrop-filter: blur(14rpx);
   padding: 4rpx;
+  position: relative;
+  z-index: 10;
 }
 
 .scope-toggle {
@@ -73,7 +76,7 @@
   display: flex;
   align-items: center;
   gap: 16rpx;
-  margin-top: 20rpx;
+  margin-top: 16rpx;
   align-self: flex-start;
 }
 
