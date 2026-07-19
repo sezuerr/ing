@@ -92,6 +92,51 @@
   -webkit-backdrop-filter: blur(14rpx);
 }
 
+/* 筛选图标容器样式 */
+.filter-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14rpx);
+  -webkit-backdrop-filter: blur(14rpx);
+  color: var(--color-text-primary, #333333);
+  transition: opacity 0.2s ease;
+}
+
+.filter-icon-wrapper:active {
+  opacity: 0.6;
+}
+
+.filter-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5rpx;
+  width: 36rpx;
+}
+
+.filter-line {
+  height: 4rpx;
+  border-radius: 2rpx;
+  background: currentColor;
+}
+
+.filter-line-top {
+  width: 100%;
+}
+
+.filter-line-mid {
+  width: 66%;
+}
+
+.filter-line-bot {
+  width: 33%;
+}
+
 .circle-icon {
   width: 40rpx;
   height: 40rpx;

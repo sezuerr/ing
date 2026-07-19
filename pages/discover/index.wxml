@@ -24,8 +24,12 @@
       <view class="circle-btn" catchtap="openCircle">
         <image class="circle-icon" src="/icons/links-line.svg" mode="aspectFit" />
       </view>
-      <view class="circle-btn" catchtap="openFilter">
-        <image class="circle-icon" src="/icons/grid-line.svg" mode="aspectFit" />
+      <view class="filter-icon-wrapper" catchtap="openFilter">
+        <view class="filter-icon">
+          <view class="filter-line filter-line-top"></view>
+          <view class="filter-line filter-line-mid"></view>
+          <view class="filter-line filter-line-bot"></view>
+        </view>
       </view>
     </view>
   </view>
