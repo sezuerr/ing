@@ -45,6 +45,7 @@ async function ensureUser(openid, profile = {}) {
   const existing = await getUserByOpenId(openid);
   if (existing) return existing;
 
+  const t = now();
   const doc = {
     openid,
     avatarUrl: profile.avatarUrl || "",
@@ -57,8 +58,8 @@ async function ensureUser(openid, profile = {}) {
     geoHash: profile.geoHash || "",
     privacy: { showToFriendsOnly: false },
     stats: { likeCount: 0, commentCount: 0 },
-    createdAt: now(),
-    updatedAt: now()
+    createdAt: t,
+    updatedAt: t
   };
   const created = await db.collection(C.users).add({ data: doc });
   return { _id: created._id, ...doc };
@@ -76,21 +77,23 @@ async function loginAndSyncProfile(openid, payload) {
 }
 
 async function updateProfile(openid, payload) {
-  const user = await ensureUser(openid);
-  const allowed = {
-    avatarUrl: payload.avatarUrl || "",
-    nickName: String(payload.nickName || "").slice(0, 20),
-    gender: payload.gender || "非二元",
-    bio: String(payload.bio || "").slice(0, 50),
-    universityId: payload.universityId || "",
-    universityName: payload.universityName || "",
-    cityCode: payload.cityCode || "",
-    geoHash: payload.geoHash || "",
-    updatedAt: now()
-  };
+  await ensureUser(openid);
+  const allowed = {};
+  if (payload.avatarUrl != null) allowed.avatarUrl = payload.avatarUrl;
+  if (payload.nickName != null) allowed.nickName = String(payload.nickName).slice(0, 20);
+  if (payload.gender != null) allowed.gender = payload.gender;
+  if (payload.bio != null) allowed.bio = String(payload.bio).slice(0, 50);
+  if (payload.universityId != null) allowed.universityId = payload.universityId;
+  if (payload.universityName != null) allowed.universityName = payload.universityName;
+  if (payload.cityCode != null) allowed.cityCode = payload.cityCode;
+  if (payload.geoHash != null) allowed.geoHash = payload.geoHash;
+  if (!Object.keys(allowed).length) return ok({});
 
-  await db.collection(C.users).doc(user._id).update({ data: allowed });
-  return ok({ ...user, ...allowed });
+  const t = now();
+  allowed.updatedAt = t;
+  await db.collection(C.users).where({ openid }).update({ data: allowed });
+  const user = await getUserByOpenId(openid);
+  return ok(user);
 }
 
 function canSeePost(post, user, friendIds) {
@@ -111,7 +114,7 @@ async function getFriendIds(openid) {
   const matches = await db.collection(C.matches).where({
     members: _.all([openid]),
     status: "active"
-  }).limit(100).get();
+  }).limit(500).get();
   return matches.data.map((match) => match.members.find((id) => id !== openid)).filter(Boolean);
 }
 
@@ -119,35 +122,57 @@ async function getExcludedPostIds(openid) {
   const actions = await db.collection(C.actions).where({
     userId: openid,
     action: _.in(["swiped", "not_interested", "reported"])
-  }).limit(200).get();
+  }).limit(1000).get();
   return actions.data.map((item) => item.postId);
 }
 
 async function getDiscoverFeed(openid, payload) {
   const user = await ensureUser(openid);
   const scope = payload.scope || "city";
+  const pageSize = payload.pageSize || 30;
   const friendIds = await getFriendIds(openid);
   const excludedIds = await getExcludedPostIds(openid);
   const postsResult = await db.collection(C.posts).where({
     status: "visible"
   }).orderBy("createdAt", "desc").limit(100).get();
 
-  const enriched = [];
-  for (const post of postsResult.data) {
-    if (post.authorId === openid) continue;
-    if (excludedIds.includes(post._id)) continue;
-    if (!canSeePost(post, user, friendIds)) continue;
-    if (!applyScope(post, user, scope, friendIds)) continue;
-    if (payload.topicOnly && !post.dailyTopicId) continue;
+  const filtered = postsResult.data.filter((post) => {
+    if (post.authorId === openid) return false;
+    if (excludedIds.includes(post._id)) return false;
+    if (!canSeePost(post, user, friendIds)) return false;
+    if (!applyScope(post, user, scope, friendIds)) return false;
+    if (payload.topicOnly && !post.dailyTopicId) return false;
+    return true;
+  });
 
-    const author = await getUserByOpenId(post.authorId);
+  const authorIds = [...new Set(filtered.map((p) => p.authorId))];
+  const authorResults = await Promise.all(
+    authorIds.map((id) => getUserByOpenId(id))
+  );
+  const authorMap = {};
+  authorIds.forEach((id, i) => { authorMap[id] = authorResults[i]; });
+
+  const batchSize = 10;
+  const likesMap = {};
+  for (let i = 0; i < filtered.length; i += batchSize) {
+    const batch = filtered.slice(i, i + batchSize);
+    const batchResults = await Promise.all(
+      batch.map((post) =>
+        db.collection(C.likes).where({
+          fromUserId: post.authorId,
+          toUserId: openid
+        }).limit(1).get()
+      )
+    );
+    batch.forEach((post, j) => {
+      likesMap[post._id] = Boolean(batchResults[j].data.length);
+    });
+  }
+
+  const enriched = filtered.map((post) => {
+    const author = authorMap[post.authorId];
     const isFriend = friendIds.includes(post.authorId);
-    const authorLikesMe = await db.collection(C.likes).where({
-      fromUserId: post.authorId,
-      toUserId: openid
-    }).limit(1).get();
-
-    enriched.push({
+    return {
       ...post,
       author: isFriend && author ? {
         nickName: author.nickName,
@@ -155,10 +180,10 @@ async function getDiscoverFeed(openid, payload) {
         isFriend: true
       } : { isFriend: false },
       mutualFriendCount: isFriend ? 1 : 0,
-      likedMe: Boolean(authorLikesMe.data.length),
+      likedMe: likesMap[post._id] || false,
       distanceText: post.distanceText || "距你10公里内"
-    });
-  }
+    };
+  });
 
   enriched.sort((a, b) => {
     const aAffinity = (a.authorLikeCount || 0) * 1000 + (a.mutualFriendCount || 0) * 100;
@@ -171,7 +196,7 @@ async function getDiscoverFeed(openid, payload) {
 
   const topicResult = await db.collection(C.topics).where({ status: "active" }).orderBy("date", "desc").limit(1).get();
   return ok({
-    posts: enriched.slice(0, 30),
+    posts: enriched.slice(0, pageSize),
     dailyTopic: topicResult.data[0] || null
   });
 }
@@ -200,19 +225,20 @@ async function createPost(openid, payload) {
     reviewStatus: "pending",
     likeCount: 0,
     commentCount: 0,
-    createdAt: now(),
-    updatedAt: now()
+    createdAt: t,
+    updatedAt: t
   };
   const result = await db.collection(C.posts).add({ data: doc });
   return ok({ _id: result._id, ...doc });
 }
 
 async function createNotification(data) {
+  const t = now();
   return db.collection(C.notifications).add({
     data: {
       ...data,
       read: false,
-      createdAt: now()
+      createdAt: t
     }
   });
 }
@@ -220,10 +246,11 @@ async function createNotification(data) {
 async function createOrGetMatch(openid, peerId) {
   const pairKey = sortPair(openid, peerId);
   const existing = await db.collection(C.matches).where({ pairKey }).limit(1).get();
+  const t = now();
   if (existing.data[0]) {
     if (existing.data[0].status !== "active") {
       await db.collection(C.matches).doc(existing.data[0]._id).update({
-        data: { status: "active", unmatchedAt: null, updatedAt: now() }
+        data: { status: "active", unmatchedAt: null, updatedAt: t }
       });
     }
     return existing.data[0];
@@ -235,21 +262,35 @@ async function createOrGetMatch(openid, peerId) {
     userA: openid,
     userB: peerId,
     status: "active",
-    createdAt: now(),
-    updatedAt: now()
+    createdAt: t,
+    updatedAt: t
   };
-  const created = await db.collection(C.matches).add({ data: matchDoc });
-  await db.collection(C.conversations).add({
-    data: {
-      members: [openid, peerId],
-      matchId: created._id,
-      lastMessage: { text: "你们互相点亮了", createdAt: now() },
-      unreadMap: { [openid]: 0, [peerId]: 1 },
-      status: "active",
-      createdAt: now(),
-      updatedAt: now()
+
+  let created;
+  try {
+    created = await db.collection(C.matches).add({ data: matchDoc });
+  } catch (e) {
+    if (e.errCode === 11000 || String(e).includes("duplicate")) {
+      const retry = await db.collection(C.matches).where({ pairKey }).limit(1).get();
+      if (retry.data[0]) return retry.data[0];
     }
-  });
+    throw e;
+  }
+
+  const convResult = await db.collection(C.conversations).where({ matchId: created._id }).limit(1).get();
+  if (!convResult.data.length) {
+    await db.collection(C.conversations).add({
+      data: {
+        members: [openid, peerId],
+        matchId: created._id,
+        lastMessage: { text: "你们互相点亮了", createdAt: t },
+        unreadMap: { [openid]: 0, [peerId]: 1 },
+        status: "active",
+        createdAt: t,
+        updatedAt: t
+      }
+    });
+  }
   return { _id: created._id, ...matchDoc };
 }
 
@@ -262,12 +303,13 @@ async function likePost(openid, payload) {
   const duplicate = await db.collection(C.likes).where({ postId, fromUserId: openid }).limit(1).get();
   if (duplicate.data.length) return ok({ matched: false, duplicate: true });
 
+  const t = now();
   await db.collection(C.likes).add({
     data: {
       postId,
       fromUserId: openid,
       toUserId: post.authorId,
-      createdAt: now()
+      createdAt: t
     }
   });
   await db.collection(C.posts).doc(postId).update({ data: { likeCount: _.inc(1) } });
@@ -427,20 +469,21 @@ async function sendMessage(openid, payload) {
   const content = String(payload.content || "").trim().slice(0, 1000);
   if (!content) return fail("消息不能为空");
   const peerId = conversation.members.find((id) => id !== openid);
+  const t = now();
   await db.collection(C.messages).add({
     data: {
       conversationId: payload.conversationId,
       senderId: openid,
       content,
       readBy: [openid],
-      createdAt: now()
+      createdAt: t
     }
   });
   await db.collection(C.conversations).doc(payload.conversationId).update({
     data: {
-      lastMessage: { text: content, createdAt: now() },
+      lastMessage: { text: content, createdAt: t },
       [`unreadMap.${peerId}`]: _.inc(1),
-      updatedAt: now()
+      updatedAt: t
     }
   });
   return ok({ sent: true });
@@ -469,12 +512,13 @@ async function getMessages(openid, payload) {
 async function unmatchUser(openid, payload) {
   const conversation = (await db.collection(C.conversations).doc(payload.conversationId).get()).data;
   if (!conversation || !conversation.members.includes(openid)) return fail("无权解除配对", "FORBIDDEN");
+  const t = now();
   await db.collection(C.conversations).doc(payload.conversationId).update({
-    data: { status: "unmatched", updatedAt: now() }
+    data: { status: "unmatched", updatedAt: t }
   });
   if (conversation.matchId) {
     await db.collection(C.matches).doc(conversation.matchId).update({
-      data: { status: "unmatched", unmatchedAt: now(), updatedAt: now() }
+      data: { status: "unmatched", unmatchedAt: t, updatedAt: t }
     });
   }
   return ok({ unmatched: true });
@@ -482,13 +526,14 @@ async function unmatchUser(openid, payload) {
 
 async function reportPost(openid, payload) {
   const reason = payload.reason || "not_interested";
+  const t = now();
   await db.collection(C.reports).add({
     data: {
       postId: payload.postId,
       reporterId: openid,
       reason,
       status: "pending",
-      createdAt: now()
+      createdAt: t
     }
   });
   await db.collection(C.actions).add({
@@ -496,7 +541,7 @@ async function reportPost(openid, payload) {
       userId: openid,
       postId: payload.postId,
       action: reason === "not_interested" ? "not_interested" : "reported",
-      createdAt: now()
+      createdAt: t
     }
   });
   return ok({ reported: true });
@@ -596,6 +641,6 @@ exports.main = async (event) => {
     return await handlers[action](OPENID, payload);
   } catch (error) {
     console.error(action, error);
-    return fail(error.message || "服务异常", "INTERNAL_ERROR");
+    return fail("服务异常", "INTERNAL_ERROR");
   }
 };
