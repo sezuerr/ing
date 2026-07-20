@@ -24,7 +24,6 @@ Page({
   _located: false,
 
   onLoad() {
-    this.seedMockMarkers();
     var app = getApp();
     var cu = app && app.globalData && app.globalData.currentUser;
     if (cu && cu._id) {
@@ -146,53 +145,51 @@ Page({
   },
 
   async loadFeed() {
-    var existingIds = {};
-    var feedList = this.data.feedList;
-    for (var k = 0; k < feedList.length; k++) {
-      existingIds[feedList[k].id] = true;
-    }
+    var self = this;
+    var feedList = [];
 
-    var result = await api.getDiscoverFeed({
-      scope: "university",
-      topicOnly: false
-    });
-    var posts = (result.posts || []).filter(function(p) {
-      return p.universityId === "ruc";
-    });
-
-    var newItems = [];
-    for (var j = 0; j < posts.length; j++) {
-      var p = posts[j];
-      if (existingIds[p._id]) continue;
-      existingIds[p._id] = true;
-
-      var minAgo = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 60000);
-      var authorName = (p.author && p.author.nickName) || "同学";
-
-      newItems.push({
-        id: p._id,
-        postId: p._id,
-        emoji: p.icon || "💡",
-        label: p.title ? p.title.slice(0, 6) : "动态",
-        landmark: p.landmark || p.universityName || "",
-        body: p.body || "",
-        displayName: authorName,
-        avatarText: authorName.slice(0, 1),
-        timeText: minAgo + "分钟前",
-        universityName: p.universityName || "",
-        likeCount: p.likeCount || 0,
-        createdAt: new Date(p.createdAt).getTime(),
-        latitude: p.latitude,
-        longitude: p.longitude,
+    try {
+      var result = await api.getDiscoverFeed({
         scope: "university",
-        isLit: false
+        topicOnly: false
       });
+      var posts = result.posts || [];
+
+      for (var j = 0; j < posts.length; j++) {
+        var p = posts[j];
+        var minAgo = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 60000);
+        var authorName = (p.author && p.author.nickName) || "同学";
+
+        feedList.push({
+          id: p._id,
+          postId: p._id,
+          emoji: p.icon || "💡",
+          label: p.title ? p.title.slice(0, 6) : "动态",
+          landmark: p.landmark || p.universityName || "",
+          body: p.body || "",
+          displayName: authorName,
+          avatarText: authorName.slice(0, 1),
+          timeText: minAgo + "分钟前",
+          universityName: p.universityName || "",
+          likeCount: p.likeCount || 0,
+          createdAt: new Date(p.createdAt).getTime(),
+          latitude: p.latitude,
+          longitude: p.longitude,
+          scope: "university",
+          isLit: false
+        });
+      }
+    } catch (err) {
+      console.error("[map] 云端加载失败，使用 mock 兜底", err);
     }
 
-    if (newItems.length > 0) {
-      this.setData({ feedList: feedList.concat(newItems) });
+    // 云端无数据时 fallback 到 mock markers
+    if (feedList.length === 0) {
+      self.seedMockMarkers();
+      return;
     }
 
+    this.setData({ feedList: feedList });
     this.generateMapMarkers();
   },
 

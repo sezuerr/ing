@@ -91,6 +91,58 @@
   font-size: 24rpx;
 }
 
+.location-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20rpx;
+}
+
+.location-row .location-text {
+  margin-top: 0;
+}
+
+.location-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.toggle-label {
+  color: #8a806d;
+  font-size: 24rpx;
+  font-weight: 500;
+}
+
+.toggle-track {
+  width: 80rpx;
+  height: 44rpx;
+  border-radius: 22rpx;
+  background: #e0d8c4;
+  display: flex;
+  align-items: center;
+  padding: 4rpx;
+  transition: background 0.2s;
+}
+
+.toggle-track.on {
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+}
+
+.toggle-thumb {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.12);
+  transform: translateX(0);
+  transition: transform 0.2s;
+}
+
+.toggle-thumb.on {
+  transform: translateX(36rpx);
+}
+
 .submit {
   margin-top: 28rpx;
   background: linear-gradient(135deg, #ffc107, #ff9800) !important;

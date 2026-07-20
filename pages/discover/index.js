@@ -107,15 +107,18 @@ Page({
       topicOnly: this.data.topicOnly,
       topicIcon: this.data.topicIconValue
     });
-    var posts = (result.posts || []).filter(function(p) {
-      return isWithin24h(new Date(p.createdAt).getTime());
-    });
+    var posts = result.posts || [];
+    // 暂时注释掉 24h 时间过滤，排查数据问题
+    // var posts = (result.posts || []).filter(function(p) {
+    //   return isWithin24h(new Date(p.createdAt).getTime());
+    // });
 
-    if (this.data.scopeMode === "university") {
-      posts = posts.filter(function(p) {
-        return p.universityId === "ruc";
-      });
-    }
+    // 去掉客户端硬编码的 universityId 过滤，云函数已通过 applyScope 做 scope 过滤
+    // if (this.data.scopeMode === "university") {
+    //   posts = posts.filter(function(p) {
+    //     return p.universityId === "ruc";
+    //   });
+    // }
 
     // 前端话题筛选（后端未支持时作为 fallback）
     var topicIconVal = this.data.topicIconValue;

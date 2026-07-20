@@ -25,7 +25,15 @@
     <view class="section-title">位置与隐私</view>
     <view class="panel privacy">
       <visibility-selector value="{{form.visibility}}" bind:change="onVisibilityChange" />
-      <text class="location-text">{{locationText}}</text>
+      <view class="location-row">
+        <text class="location-text">{{locationText}}</text>
+        <view class="location-toggle" bindtap="toggleShowLocation">
+          <view class="toggle-track {{showLocation ? 'on' : ''}}">
+            <view class="toggle-thumb {{showLocation ? 'on' : ''}}" />
+          </view>
+          <text class="toggle-label">显示位置</text>
+        </view>
+      </view>
     </view>
   </view>
 

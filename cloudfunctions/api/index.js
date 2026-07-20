@@ -134,6 +134,7 @@ async function getDiscoverFeed(openid, payload) {
 
   const enriched = [];
   for (const post of postsResult.data) {
+    if (post.authorId === openid) continue;
     if (excludedIds.includes(post._id)) continue;
     if (!canSeePost(post, user, friendIds)) continue;
     if (!applyScope(post, user, scope, friendIds)) continue;
@@ -192,6 +193,8 @@ async function createPost(openid, payload) {
     universityId: payload.universityId || user.universityId,
     universityName: payload.universityName || user.universityName,
     geoHash: payload.geoHash || user.geoHash || "",
+    latitude: payload.latitude != null ? payload.latitude : null,
+    longitude: payload.longitude != null ? payload.longitude : null,
     distanceText: "距你10公里内",
     status: "visible",
     reviewStatus: "pending",

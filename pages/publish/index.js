@@ -6,6 +6,7 @@ Page({
   data: {
     locationText: "使用学校和模糊位置",
     location: null,
+    showLocation: false,
     submitting: false,
     form: {
       icon: "💡",
@@ -83,6 +84,17 @@ Page({
     });
   },
 
+  toggleShowLocation() {
+    var next = !this.data.showLocation;
+    this.setData({ showLocation: next });
+    if (next) {
+      // 开启时自动获取定位
+      this.refreshLocation();
+    } else {
+      this.setData({ location: null, locationText: "使用学校和模糊位置" });
+    }
+  },
+
   refreshLocation() {
     wx.getLocation({
       type: "gcj02",
@@ -115,12 +127,20 @@ Page({
     this.setData({ submitting: true });
 
     try {
-      const created = await api.createPost({
+      var payload = {
         ...form,
         universityId: user.universityId,
         universityName: user.universityName,
         cityCode: user.cityCode
-      });
+      };
+
+      // 仅当用户允许显示位置时提交经纬度
+      if (this.data.showLocation && this.data.location) {
+        payload.latitude = this.data.location.latitude;
+        payload.longitude = this.data.location.longitude;
+      }
+
+      const created = await api.createPost(payload);
 
       // 只有真正走通云函数才会拿到服务端 _id；本地兜底会是 local_ 前缀。
       if (created && typeof created._id === "string" && created._id.startsWith("local_")) {
