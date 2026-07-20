@@ -1,4 +1,5 @@
 const { fromNow } = require("../../utils/time");
+const api = require("../../utils/cloud");
 
 Component({
   properties: {
@@ -36,6 +37,7 @@ Component({
       }
       this.setData({
         isMine: isMine,
+        isFriend: isFriend,
         canComment: isFriend || likedMe || isMine,
         matched: post.matched || false,
         likedMe: likedMe,
@@ -52,6 +54,7 @@ Component({
 
   data: {
     isMine: false,
+    isFriend: false,
     canComment: false,
     matched: false,
     likedMe: false,
@@ -66,17 +69,43 @@ Component({
 
   methods: {
     like() {
-      if (this.data.liked || this.data.matched) return;
+      if (this.data._liking) return;
+      if (this.data.likedByMe || this.data.matched) return;
+
+      var previousState = {
+        liked: this.data.liked,
+        bulbLit: this.data.bulbLit,
+        matched: this.data.matched,
+        likedByMe: this.data.likedByMe,
+        canComment: this.data.canComment
+      };
+
+      this.data._liking = true;
       this.setData({ liked: true, bulbLit: true });
-      wx.showToast({ title: "已点亮 💡", icon: "none", duration: 1500 });
 
-      if (this.data.likedMe) {
-        this.setData({ matched: true, canComment: true });
-        this.triggerEvent("match", { post: this.data.post });
-        return;
-      }
-
-      this.triggerEvent("like", { post: this.data.post });
+      var self = this;
+      wx.showLoading({ title: "处理中" });
+      api.likePost(this.data.post._id).then(function(result) {
+        if (result.__fromFallback) {
+          self.setData(previousState);
+          wx.showToast({ title: "网络异常，请重试", icon: "none" });
+          return;
+        }
+        if (result.matched) {
+          self.setData({ matched: true, canComment: true });
+          self.triggerEvent("match", { post: self.data.post });
+          wx.showToast({ title: "配对成功！解锁聊天", icon: "none" });
+        } else {
+          self.setData({ likedByMe: true });
+          wx.showToast({ title: "已点亮", icon: "none" });
+        }
+      }).catch(function() {
+        self.setData(previousState);
+        wx.showToast({ title: "操作失败，请重试", icon: "none" });
+      }).finally(function() {
+        self.data._liking = false;
+        wx.hideLoading();
+      });
     },
 
     goChat() {

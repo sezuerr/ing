@@ -8,8 +8,15 @@ function canUseCloud() {
   return Boolean(wx.cloud && app.globalData.cloudReady);
 }
 
+function markFallback(data) {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    data.__fromFallback = true;
+  }
+  return data;
+}
+
 function normalizeResult(result, fallback) {
-  if (!result || !result.result) return fallback;
+  if (!result || !result.result) return markFallback(fallback);
   if (result.result.ok === false) {
     const err = new Error(result.result.message || "云函数调用失败");
     err.code = result.result.code;
@@ -19,10 +26,11 @@ function normalizeResult(result, fallback) {
   return result.result.data === undefined ? result.result : result.result.data;
 }
 
+let firstCloudFailLogged = {};
 async function callApi(action, data = {}, fallback) {
   if (!canUseCloud()) {
     console.warn(`[cloud:${action}] 云能力不可用，使用本地兜底数据`);
-    return fallback;
+    return markFallback(fallback);
   }
 
   let result;
@@ -32,12 +40,13 @@ async function callApi(action, data = {}, fallback) {
       data: { action, payload: data }
     });
   } catch (error) {
-    // 调用本身失败：环境 ID 错误、云函数未部署、网络异常等。降级到 mock。
-    console.error(`[cloud:${action}] 云函数调用失败，已降级到本地数据。请检查：环境 ID 是否正确、api 云函数是否已上传部署。`, error);
-    return fallback;
+    if (!firstCloudFailLogged[action]) {
+      firstCloudFailLogged[action] = true;
+      console.error(`[cloud:${action}] 云函数调用失败，已降级到本地数据。请检查：环境 ID 是否正确、api 云函数是否已上传部署。`, error);
+    }
+    return markFallback(fallback);
   }
 
-  // 调用成功但返回业务错误（如未登录、权限不足）：抛出，让页面感知，不静默吞掉。
   return normalizeResult(result, fallback);
 }
 
@@ -58,7 +67,7 @@ function createPost(post) {
 }
 
 function likePost(postId) {
-  return callApi("likePost", { postId }, { matched: false });
+  return callApi("likePost", { postId }, { matched: false, likedByMe: true });
 }
 
 function sendPrivateReply(payload) {

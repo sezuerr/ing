@@ -107,7 +107,8 @@ function canSeePost(post, user, friendIds) {
 function applyScope(post, user, scope, friendIds) {
   if (scope === "university") return post.universityId && post.universityId === user.universityId;
   if (scope === "friends") return friendIds.includes(post.authorId);
-  return post.cityCode && post.cityCode === user.cityCode;
+  if (scope === "city") return !post.cityCode || post.cityCode === user.cityCode;
+  return true;
 }
 
 async function getFriendIds(openid) {
@@ -152,22 +153,27 @@ async function getDiscoverFeed(openid, payload) {
   const authorMap = {};
   authorIds.forEach((id, i) => { authorMap[id] = authorResults[i]; });
 
-  const batchSize = 10;
+  const authorIdsDedup = [...new Set(filtered.map(p => p.authorId))];
+
+  const likesBatchResult = await db.collection(C.likes).where({
+    fromUserId: _.in(authorIdsDedup),
+    toUserId: openid
+  }).limit(1000).get();
+  const likedByAuthorSet = new Set(likesBatchResult.data.map(l => l.fromUserId));
   const likesMap = {};
-  for (let i = 0; i < filtered.length; i += batchSize) {
-    const batch = filtered.slice(i, i + batchSize);
-    const batchResults = await Promise.all(
-      batch.map((post) =>
-        db.collection(C.likes).where({
-          fromUserId: post.authorId,
-          toUserId: openid
-        }).limit(1).get()
-      )
-    );
-    batch.forEach((post, j) => {
-      likesMap[post._id] = Boolean(batchResults[j].data.length);
-    });
-  }
+  filtered.forEach((post) => {
+    likesMap[post._id] = likedByAuthorSet.has(post.authorId);
+  });
+
+  const myLikesBatchResult = await db.collection(C.likes).where({
+    fromUserId: openid,
+    toUserId: _.in(authorIdsDedup)
+  }).limit(1000).get();
+  const likedByMeSet = new Set(myLikesBatchResult.data.map(l => l.toUserId));
+  const likedByMeMap = {};
+  filtered.forEach((post) => {
+    likedByMeMap[post._id] = likedByMeSet.has(post.authorId);
+  });
 
   const enriched = filtered.map((post) => {
     const author = authorMap[post.authorId];
@@ -181,6 +187,7 @@ async function getDiscoverFeed(openid, payload) {
       } : { isFriend: false },
       mutualFriendCount: isFriend ? 1 : 0,
       likedMe: likesMap[post._id] || false,
+      likedByMe: likedByMeMap[post._id] || false,
       distanceText: post.distanceText || "距你10公里内"
     };
   });
@@ -207,6 +214,7 @@ async function createPost(openid, payload) {
   const body = String(payload.body || "").trim();
   if (!title || !body) return fail("标题和正文不能为空");
 
+  const t = now();
   const doc = {
     authorId: openid,
     title: title.slice(0, 40),
@@ -301,17 +309,22 @@ async function likePost(openid, payload) {
   if (!post || post.authorId === openid) return fail("不能点亮自己的帖子");
 
   const duplicate = await db.collection(C.likes).where({ postId, fromUserId: openid }).limit(1).get();
-  if (duplicate.data.length) return ok({ matched: false, duplicate: true });
+  if (duplicate.data.length) return ok({ matched: false, duplicate: true, likedByMe: true });
 
   const t = now();
-  await db.collection(C.likes).add({
-    data: {
-      postId,
-      fromUserId: openid,
-      toUserId: post.authorId,
-      createdAt: t
-    }
-  });
+  try {
+    await db.collection(C.likes).add({
+      data: {
+        postId,
+        fromUserId: openid,
+        toUserId: post.authorId,
+        createdAt: t
+      }
+    });
+  } catch (e) {
+    if (e.errCode === 11000) return ok({ matched: false, duplicate: true, likedByMe: true });
+    throw e;
+  }
   await db.collection(C.posts).doc(postId).update({ data: { likeCount: _.inc(1) } });
   await db.collection(C.users).where({ openid: post.authorId }).update({ data: { "stats.likeCount": _.inc(1) } });
   await createNotification({
@@ -327,7 +340,7 @@ async function likePost(openid, payload) {
     fromUserId: post.authorId,
     toUserId: openid
   }).limit(1).get();
-  if (!reciprocal.data.length) return ok({ matched: false });
+  if (!reciprocal.data.length) return ok({ matched: false, likedByMe: true });
 
   await createOrGetMatch(openid, post.authorId);
   await createNotification({
@@ -346,7 +359,7 @@ async function likePost(openid, payload) {
     title: "配对成功",
     description: "你们互相点亮了，可以开始聊天。"
   });
-  return ok({ matched: true });
+  return ok({ matched: true, likedByMe: true });
 }
 
 async function sendPrivateReply(openid, payload) {
@@ -389,15 +402,30 @@ async function getNotifications(openid, payload = {}) {
     .limit(50)
     .get();
 
-  const notifications = [];
-  for (const item of result.data) {
-    const revealed = Boolean(await activeMatch(openid, item.actorId));
-    const actor = revealed ? await getUserByOpenId(item.actorId) : null;
-    notifications.push({
+  const notificationActorIds = [...new Set(result.data.map(item => item.actorId))];
+  const matchResults = await Promise.all(
+    notificationActorIds.map(id => activeMatch(openid, id))
+  );
+  const revealedMap = {};
+  notificationActorIds.forEach((id, i) => { revealedMap[id] = Boolean(matchResults[i]); });
+
+  const revealedIds = notificationActorIds.filter(id => revealedMap[id]);
+  const userBatchResult = revealedIds.length > 0
+    ? await db.collection(C.users).where({
+        openid: _.in(revealedIds)
+      }).get()
+    : { data: [] };
+  const userMap = {};
+  userBatchResult.data.forEach(u => { userMap[u.openid] = u; });
+
+  const notifications = result.data.map(item => {
+    const revealed = revealedMap[item.actorId];
+    const actor = revealed ? userMap[item.actorId] : null;
+    return {
       ...item,
       actor: actor ? { nickName: actor.nickName, avatarUrl: actor.avatarUrl } : null
-    });
-  }
+    };
+  });
   return ok({ notifications });
 }
 
@@ -446,17 +474,23 @@ async function getConversations(openid) {
     .orderBy("updatedAt", "desc")
     .limit(50)
     .get();
-  const conversations = [];
-  for (const item of result.data) {
-    const peerId = item.members.find((id) => id !== openid);
-    const peer = await getUserByOpenId(peerId);
-    conversations.push({
+  const peerIds = result.data.map(item => item.members.find(id => id !== openid));
+  const peerBatchResult = await db.collection(C.users).where({
+    openid: _.in(peerIds)
+  }).limit(peerIds.length).get();
+  const peerMap = {};
+  peerBatchResult.data.forEach(u => { peerMap[u.openid] = u; });
+
+  const conversations = result.data.map(item => {
+    const peerId = item.members.find(id => id !== openid);
+    const peer = peerMap[peerId];
+    return {
       ...item,
       peerId,
       peer: peer ? { nickName: peer.nickName, avatarUrl: peer.avatarUrl } : { nickName: "同学", avatarUrl: "" },
       unreadCount: item.unreadMap && item.unreadMap[openid] ? item.unreadMap[openid] : 0
-    });
-  }
+    };
+  });
   return ok({ conversations });
 }
 
@@ -585,23 +619,56 @@ async function getPostDetail(openid, payload) {
     const match = await activeMatch(openid, post.authorId);
     if (!match) return fail("无权查看评论明细", "FORBIDDEN");
   }
+
+  const friendIds = await getFriendIds(openid);
+  const isFriend = friendIds.includes(post.authorId) || (post.authorId === openid);
+
+  const likeFrom = await db.collection(C.likes).where({
+    fromUserId: post.authorId,
+    toUserId: openid
+  }).limit(1).get();
+  const likedMe = likeFrom.data.length > 0;
+
+  const likeTo = await db.collection(C.likes).where({
+    fromUserId: openid,
+    toUserId: post.authorId
+  }).limit(1).get();
+  const likedByMe = likeTo.data.length > 0;
+
+  const enrichedPost = {
+    ...post,
+    author: isFriend && post.authorId !== openid ? {
+      nickName: (await getUserByOpenId(post.authorId))?.nickName || "好友",
+      avatarUrl: (await getUserByOpenId(post.authorId))?.avatarUrl || "",
+      isFriend: true
+    } : post.author || { isFriend: false },
+    isFriend: isFriend,
+    likedMe: likedMe,
+    likedByMe: likedByMe
+  };
   const comments = await db.collection(C.comments)
     .where({ postId: payload.postId })
     .orderBy("createdAt", "desc")
     .limit(100)
     .get();
-  const enrichedComments = [];
-  for (const comment of comments.data) {
-    const fromUser = await getUserByOpenId(comment.fromUserId);
-    enrichedComments.push({
+  const commentUserIds = [...new Set(comments.data.map(c => c.fromUserId))];
+  const commentUserResults = await db.collection(C.users).where({
+    openid: _.in(commentUserIds)
+  }).limit(commentUserIds.length).get();
+  const commentUserMap = {};
+  commentUserResults.data.forEach(u => { commentUserMap[u.openid] = u; });
+
+  const enrichedComments = comments.data.map(comment => {
+    const fromUser = commentUserMap[comment.fromUserId];
+    return {
       ...comment,
       fromUser: fromUser ? {
         nickName: fromUser.nickName,
         avatarUrl: fromUser.avatarUrl
       } : { nickName: "好友", avatarUrl: "" }
-    });
-  }
-  return ok({ post, comments: enrichedComments });
+    };
+  });
+  return ok({ post: enrichedPost, comments: enrichedComments });
 }
 
 async function getUniversities() {

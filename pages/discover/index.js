@@ -102,40 +102,35 @@ Page({
   },
 
   async loadFeed() {
-    var result = await api.getDiscoverFeed({
-      scope: this.data.scope,
-      topicOnly: this.data.topicOnly,
-      topicIcon: this.data.topicIconValue
-    });
-    var posts = result.posts || [];
-    // 暂时注释掉 24h 时间过滤，排查数据问题
-    // var posts = (result.posts || []).filter(function(p) {
-    //   return isWithin24h(new Date(p.createdAt).getTime());
-    // });
-
-    // 去掉客户端硬编码的 universityId 过滤，云函数已通过 applyScope 做 scope 过滤
-    // if (this.data.scopeMode === "university") {
-    //   posts = posts.filter(function(p) {
-    //     return p.universityId === "ruc";
-    //   });
-    // }
-
-    // 前端话题筛选（后端未支持时作为 fallback）
-    var topicIconVal = this.data.topicIconValue;
-    if (topicIconVal) {
-      var selectedIcons = topicIconVal.split(",");
-      posts = posts.filter(function(p) {
-        var postIcon = p.topicIcon || p.icon;
-        return postIcon && selectedIcons.indexOf(postIcon) !== -1;
+    wx.showLoading({ title: "加载中" });
+    try {
+      var result = await api.getDiscoverFeed({
+        scope: this.data.scope,
+        topicOnly: this.data.topicOnly,
+        topicIcon: this.data.topicIconValue
       });
-    }
+      var posts = result.posts || [];
 
-    this.setData({
-      posts: posts,
-      currentIndex: 0,
-      currentPost: posts[0] || null,
-      nextPost: posts[1] || null
-    });
+      var topicIconVal = this.data.topicIconValue;
+      if (topicIconVal) {
+        var selectedIcons = topicIconVal.split(",");
+        posts = posts.filter(function(p) {
+          var postIcon = p.topicIcon || p.icon;
+          return postIcon && selectedIcons.indexOf(postIcon) !== -1;
+        });
+      }
+
+      this.setData({
+        posts: posts,
+        currentIndex: 0,
+        currentPost: posts[0] || null,
+        nextPost: posts[1] || null
+      });
+    } catch (e) {
+      console.error("[discover] loadFeed 异常", e);
+    } finally {
+      wx.hideLoading();
+    }
   },
 
   openFilter() {
@@ -248,15 +243,23 @@ Page({
     });
   },
 
-  async likePost(event) {
+  likePost(event) {
     var post = event.detail.post;
-    var result = await api.likePost(post._id);
-    var matched = result && result.matched;
-    if (matched) {
-      post.matched = true;
-      this.setData({ currentPost: post });
+    if (!post || !post._id) return;
+  },
+
+  onMatch(event) {
+    var post = event.detail.post;
+    if (!post) return;
+    var posts = this.data.posts;
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i]._id === post._id) {
+        posts[i].matched = true;
+        posts[i].likedByMe = true;
+        break;
+      }
     }
-    wx.showToast({ title: matched ? "配对成功！解锁聊天" : "已点亮 · 等待回应", icon: "none" });
+    this.setData({ posts: posts, currentPost: post });
   },
 
   goChat(event) {
@@ -267,8 +270,19 @@ Page({
   async replyPost(event) {
     var data = event.detail;
     if (!data.content) return;
-    await api.sendPrivateReply({ postId: data.post._id, content: data.content });
-    wx.showToast({ title: "已发送", icon: "success" });
+    wx.showLoading({ title: "发送中" });
+    try {
+      var result = await api.sendPrivateReply({ postId: data.post._id, content: data.content });
+      if (result.__fromFallback) {
+        wx.showToast({ title: "网络异常，请重试", icon: "none" });
+        return;
+      }
+      wx.showToast({ title: "已发送", icon: "success" });
+    } catch (e) {
+      wx.showToast({ title: "发送失败，请重试", icon: "none" });
+    } finally {
+      wx.hideLoading();
+    }
   },
 
   reportPost(event) {
@@ -284,9 +298,20 @@ Page({
     var reasonVal = event.currentTarget.dataset.value;
     var post = this.data.reportPost;
     if (!post) return;
-    await api.reportPost({ postId: post._id, reason: reasonVal });
-    wx.showToast({ title: reasonVal === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
-    this.setData({ reportVisible: false });
-    this.nextPost();
+    wx.showLoading({ title: "提交中" });
+    try {
+      var result = await api.reportPost({ postId: post._id, reason: reasonVal });
+      if (result.__fromFallback) {
+        wx.showToast({ title: "网络异常，请重试", icon: "none" });
+        return;
+      }
+      wx.showToast({ title: reasonVal === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
+      this.setData({ reportVisible: false });
+      this.nextPost();
+    } catch (e) {
+      wx.showToast({ title: "提交失败，请重试", icon: "none" });
+    } finally {
+      wx.hideLoading();
+    }
   }
 });

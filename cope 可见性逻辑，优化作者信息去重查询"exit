@@ -1,0 +1,175 @@
+[1mdiff --git a/cloudfunctions/api/index.js b/cloudfunctions/api/index.js[m
+[1mindex f099015..6877079 100755[m
+[1m--- a/cloudfunctions/api/index.js[m
+[1m+++ b/cloudfunctions/api/index.js[m
+[36m@@ -107,7 +107,8 @@[m [mfunction canSeePost(post, user, friendIds) {[m
+ function applyScope(post, user, scope, friendIds) {[m
+   if (scope === "university") return post.universityId && post.universityId === user.universityId;[m
+   if (scope === "friends") return friendIds.includes(post.authorId);[m
+[31m-  return post.cityCode && post.cityCode === user.cityCode;[m
+[32m+[m[32m  if (scope === "city") return !post.cityCode || post.cityCode === user.cityCode;[m
+[32m+[m[32m  return true;[m
+ }[m
+ [m
+ async function getFriendIds(openid) {[m
+[36m@@ -152,22 +153,27 @@[m [masync function getDiscoverFeed(openid, payload) {[m
+   const authorMap = {};[m
+   authorIds.forEach((id, i) => { authorMap[id] = authorResults[i]; });[m
+ [m
+[31m-  const batchSize = 10;[m
+[32m+[m[32m  const authorIdsDedup = [...new Set(filtered.map(p => p.authorId))];[m
+[32m+[m
+[32m+[m[32m  const likesBatchResult = await db.collection(C.likes).where({[m
+[32m+[m[32m    fromUserId: _.in(authorIdsDedup),[m
+[32m+[m[32m    toUserId: openid[m
+[32m+[m[32m  }).limit(1000).get();[m
+[32m+[m[32m  const likedByAuthorSet = new Set(likesBatchResult.data.map(l => l.fromUserId));[m
+   const likesMap = {};[m
+[31m-  for (let i = 0; i < filtered.length; i += batchSize) {[m
+[31m-    const batch = filtered.slice(i, i + batchSize);[m
+[31m-    const batchResults = await Promise.all([m
+[31m-      batch.map((post) =>[m
+[31m-        db.collection(C.likes).where({[m
+[31m-          fromUserId: post.authorId,[m
+[31m-          toUserId: openid[m
+[31m-        }).limit(1).get()[m
+[31m-      )[m
+[31m-    );[m
+[31m-    batch.forEach((post, j) => {[m
+[31m-      likesMap[post._id] = Boolean(batchResults[j].data.length);[m
+[31m-    });[m
+[31m-  }[m
+[32m+[m[32m  filtered.forEach((post) => {[m
+[32m+[m[32m    likesMap[post._id] = likedByAuthorSet.has(post.authorId);[m
+[32m+[m[32m  });[m
+[32m+[m
+[32m+[m[32m  const myLikesBatchResult = await db.collection(C.likes).where({[m
+[32m+[m[32m    fromUserId: openid,[m
+[32m+[m[32m    toUserId: _.in(authorIdsDedup)[m
+[32m+[m[32m  }).limit(1000).get();[m
+[32m+[m[32m  const likedByMeSet = new Set(myLikesBatchResult.data.map(l => l.toUserId));[m
+[32m+[m[32m  const likedByMeMap = {};[m
+[32m+[m[32m  filtered.forEach((post) => {[m
+[32m+[m[32m    likedByMeMap[post._id] = likedByMeSet.has(post.authorId);[m
+[32m+[m[32m  });[m
+ [m
+   const enriched = filtered.map((post) => {[m
+     const author = authorMap[post.authorId];[m
+[36m@@ -181,6 +187,7 @@[m [masync function getDiscoverFeed(openid, payload) {[m
+       } : { isFriend: false },[m
+       mutualFriendCount: isFriend ? 1 : 0,[m
+       likedMe: likesMap[post._id] || false,[m
+[32m+[m[32m      likedByMe: likedByMeMap[post._id] || false,[m
+       distanceText: post.distanceText || "距你10公里内"[m
+     };[m
+   });[m
+[36m@@ -207,6 +214,7 @@[m [masync function createPost(openid, payload) {[m
+   const body = String(payload.body || "").trim();[m
+   if (!title || !body) return fail("标题和正文不能为空");[m
+ [m
+[32m+[m[32m  const t = now();[m
+   const doc = {[m
+     authorId: openid,[m
+     title: title.slice(0, 40),[m
+[36m@@ -301,17 +309,22 @@[m [masync function likePost(openid, payload) {[m
+   if (!post || post.authorId === openid) return fail("不能点亮自己的帖子");[m
+ [m
+   const duplicate = await db.collection(C.likes).where({ postId, fromUserId: openid }).limit(1).get();[m
+[31m-  if (duplicate.data.length) return ok({ matched: false, duplicate: true });[m
+[32m+[m[32m  if (duplicate.data.length) return ok({ matched: false, duplicate: true, likedByMe: true });[m
+ [m
+   const t = now();[m
+[31m-  await db.collection(C.likes).add({[m
+[31m-    data: {[m
+[31m-      postId,[m
+[31m-      fromUserId: openid,[m
+[31m-      toUserId: post.authorId,[m
+[31m-      createdAt: t[m
+[31m-    }[m
+[31m-  });[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    await db.collection(C.likes).add({[m
+[32m+[m[32m      data: {[m
+[32m+[m[32m        postId,[m
+[32m+[m[32m        fromUserId: openid,[m
+[32m+[m[32m        toUserId: post.authorId,[m
+[32m+[m[32m        createdAt: t[m
+[32m+[m[32m      }[m
+[32m+[m[32m    });[m
+[32m+[m[32m  } catch (e) {[m
+[32m+[m[32m    if (e.errCode === 11000) return ok({ matched: false, duplicate: true, likedByMe: true });[m
+[32m+[m[32m    throw e;[m
+[32m+[m[32m  }[m
+   await db.collection(C.posts).doc(postId).update({ data: { likeCount: _.inc(1) } });[m
+   await db.collection(C.users).where({ openid: post.authorId }).update({ data: { "stats.likeCount": _.inc(1) } });[m
+   await createNotification({[m
+[36m@@ -327,7 +340,7 @@[m [masync function likePost(openid, payload) {[m
+     fromUserId: post.authorId,[m
+     toUserId: openid[m
+   }).limit(1).get();[m
+[31m-  if (!reciprocal.data.length) return ok({ matched: false });[m
+[32m+[m[32m  if (!reciprocal.data.length) return ok({ matched: false, likedByMe: true });[m
+ [m
+   await createOrGetMatch(openid, post.authorId);[m
+   await createNotification({[m
+[36m@@ -346,7 +359,7 @@[m [masync function likePost(openid, payload) {[m
+     title: "配对成功",[m
+     description: "你们互相点亮了，可以开始聊天。"[m
+   });[m
+[31m-  return ok({ matched: true });[m
+[32m+[m[32m  return ok({ matched: true, likedByMe: true });[m
+ }[m
+ [m
+ async function sendPrivateReply(openid, payload) {[m
+[36m@@ -389,15 +402,30 @@[m [masync function getNotifications(openid, payload = {}) {[m
+     .limit(50)[m
+     .get();[m
+ [m
+[31m-  const notifications = [];[m
+[31m-  for (const item of result.data) {[m
+[31m-    const revealed = Boolean(await activeMatch(openid, item.actorId));[m
+[31m-    const actor = revealed ? await getUserByOpenId(item.actorId) : null;[m
+[31m-    notifications.push({[m
+[32m+[m[32m  const notificationActorIds = [...new Set(result.data.map(item => item.actorId))];[m
+[32m+[m[32m  const matchResults = await Promise.all([m
+[32m+[m[32m    notificationActorIds.map(id => activeMatch(openid, id))[m
+[32m+[m[32m  );[m
+[32m+[m[32m  const revealedMap = {};[m
+[32m+[m[32m  notificationActorIds.forEach((id, i) => { revealedMap[id] = Boolean(matchResults[i]); });[m
+[32m+[m
+[32m+[m[32m  const revealedIds = notificationActorIds.filter(id => revealedMap[id]);[m
+[32m+[m[32m  const userBatchResult = revealedIds.length > 0[m
+[32m+[m[32m    ? await db.collection(C.users).where({[m
+[32m+[m[32m        openid: _.in(revealedIds)[m
+[32m+[m[32m      }).get()[m
+[32m+[m[32m    : { data: [] };[m
+[32m+[m[32m  const userMap = {};[m
+[32m+[m[32m  userBatchResult.data.forEach(u => { userMap[u.openid] = u; });[m
+[32m+[m
+[32m+[m[32m  const notifications = result.data.map(item => {[m
+[32m+[m[32m    const revealed = revealedMap[item.actorId];[m
+[32m+[m[32m    const actor = revealed ? userMap[item.actorId] : null;[m
+[32m+[m[32m    return {[m
+       ...item,[m
+       actor: actor ? { nickName: actor.nickName, avatarUrl: actor.avatarUrl } : null[m
+[31m-    });[m
+[31m-  }[m
+[32m+[m[32m    };[m
+[32m+[m[32m  });[m
+   return ok({ notifications });[m
+ }[m
+ [m
+[36m@@ -446,17 +474,23 @@[m [masync function getConversations(openid) {[m
+     .orderBy("updatedAt", "desc")[m
+     .limit(50)[m
+     .get();[m
+[31m-  const conversations = [];[m
+[31m-  for (const item of result.data) {[m
+[31m-    const peerId = item.members.find((id) => id !== openid);[m
+[31m-    const peer = await getUserByOpenId(peerId);[m
+[31m-    conversations.push({[m
+[32m+[m[32m  const peerIds = result.data.map(item => item.members.find(id => id !== openid));[m
+[32m+[m[32m  const peerBatchResult = await db.collection(C.users).where({[m
+[32m+[m[32m    openid: _.in(peerIds)[m
+[32m+[m[32m  }).limit(peerIds.length).get();[m
+[32m+[m[32m  const peerMap = {};[

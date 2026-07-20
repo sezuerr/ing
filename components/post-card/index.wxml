@@ -43,9 +43,9 @@
           </view>
           <text class="mine-stat-label">{{post.commentCount || 0}} 条私密回复</text>
         </view>
-        <view wx:elif="{{matched}}" class="matched-row">
-          <view class="icon-btn like-btn liked">
-            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
+        <view wx:elif="{{isFriend}}" class="matched-row">
+          <view class="icon-btn like-btn {{likedByMe ? 'liked' : ''}}" hover-class="{{likedByMe ? '' : 'like-btn-active'}}" catchtap="{{likedByMe ? 'noop' : 'like'}}" aria-label="点亮">
+            <image class="footer-icon" src="{{likedByMe ? '/icons/lightbulb-fill.svg' : '/icons/lightbulb-line.svg'}}" mode="aspectFit" />
           </view>
           <view class="reply-area">
             <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
@@ -53,6 +53,12 @@
               <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
             </view>
           </view>
+        </view>
+        <view wx:elif="{{likedByMe}}" class="footer-liked">
+          <view class="like-status liked">
+            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
+          </view>
+          <text class="wait-text">已点亮</text>
         </view>
         <view wx:elif="{{liked}}" class="footer-liked">
           <view class="like-status liked {{bulbLit ? 'glow' : ''}}">
@@ -118,9 +124,9 @@
           </view>
           <text class="mine-stat-label">{{post.commentCount || 0}} 条私密回复</text>
         </view>
-        <view wx:elif="{{matched}}" class="matched-row">
-          <view class="icon-btn like-btn liked">
-            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
+        <view wx:elif="{{isFriend}}" class="matched-row">
+          <view class="icon-btn like-btn {{likedByMe ? 'liked' : ''}}" hover-class="{{likedByMe ? '' : 'like-btn-active'}}" catchtap="{{likedByMe ? 'noop' : 'like'}}" aria-label="点亮">
+            <image class="footer-icon" src="{{likedByMe ? '/icons/lightbulb-fill.svg' : '/icons/lightbulb-line.svg'}}" mode="aspectFit" />
           </view>
           <view class="reply-area">
             <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
@@ -128,6 +134,12 @@
               <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
             </view>
           </view>
+        </view>
+        <view wx:elif="{{likedByMe}}" class="footer-liked">
+          <view class="like-status liked">
+            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
+          </view>
+          <text class="wait-text">已点亮</text>
         </view>
         <view wx:elif="{{liked}}" class="footer-liked">
           <view class="like-status liked {{bulbLit ? 'glow' : ''}}">
