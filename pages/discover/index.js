@@ -57,6 +57,7 @@ Page({
     currentIndex: 0,
     currentPost: null,
     nextPost: null,
+    comments: [],
     windowWidth: 375,
     // 核心圈
     circleVisible: false,
@@ -135,7 +136,8 @@ Page({
         posts: posts,
         currentIndex: currentIndex,
         currentPost: posts[currentIndex] || null,
-        nextPost: posts[currentIndex + 1] || null
+        nextPost: posts[currentIndex + 1] || null,
+        comments: []
       });
     } catch (e) {
       console.error("[discover] loadFeed 异常", e);
@@ -250,7 +252,8 @@ Page({
     this.setData({
       currentIndex: wrappedIndex,
       currentPost: posts[wrappedIndex] || null,
-      nextPost: posts[nextWrappedIndex] || null
+      nextPost: posts[nextWrappedIndex] || null,
+      comments: []
     });
   },
 
@@ -306,6 +309,10 @@ Page({
     }
     updatedPost.matched = true;
     updatedPost.likedByMe = true;
+    if (!updatedPost.author) {
+      updatedPost.author = {};
+    }
+    updatedPost.author.isFriend = true;
 
     var newPosts = posts.slice();
     newPosts[idx] = updatedPost;
@@ -332,6 +339,15 @@ Page({
         return;
       }
       wx.showToast({ title: "已发送", icon: "success" });
+      var newComment = {
+        _id: "local_" + Date.now(),
+        fromUser: { nickName: "", avatarUrl: "" },
+        content: data.content,
+        createdAt: Date.now()
+      };
+      var comments = this.data.comments.slice();
+      comments.unshift(newComment);
+      this.setData({ comments: comments });
     } catch (e) {
       wx.showToast({ title: "发送失败，请重试", icon: "none" });
     } finally {

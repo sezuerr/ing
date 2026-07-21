@@ -20,7 +20,16 @@
       <view class="tab active">帖子</view>
     </view>
     <view class="list">
-      <post-list-item wx:for="{{posts}}" wx:key="_id" post="{{item}}" bind:open="openPost" />
+      <post-card
+        wx:for="{{posts}}"
+        wx:key="_id"
+        post="{{item}}"
+        comments="{{item.comments}}"
+        currentUserId="{{currentUserId}}"
+        bind:like="onLike"
+        bind:match="onMatch"
+        bind:reply="onReply"
+      />
       <view wx:if="{{!posts.length}}" class="empty-row">还没有发布内容</view>
     </view>
   </view>

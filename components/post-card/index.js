@@ -46,7 +46,7 @@ Component({
       this.setData({
         isMine: isMine,
         isFriend: isFriend,
-        canComment: isFriend || likedMe || isMine,
+        canComment: isFriend,
         matched: post.matched || false,
         likedMe: likedMe,
         likedByMe: likedByMe,

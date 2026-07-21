@@ -51,23 +51,45 @@ Page({
   onMatch(event) {
     var post = event.detail.post;
     if (!post) return;
-    post.matched = true;
-    post.likedByMe = true;
-    this.setData({ post: post });
+    var updatedPost = {};
+    for (var k in this.data.post) {
+      updatedPost[k] = this.data.post[k];
+    }
+    updatedPost.matched = true;
+    updatedPost.likedByMe = true;
+    if (!updatedPost.author) {
+      updatedPost.author = {};
+    }
+    updatedPost.author.isFriend = true;
+    this.setData({ post: updatedPost });
   },
 
-  onReply(event) {
-    var post = event.detail.post;
-    var content = event.detail.content;
+  async onReply(event) {
+    var data = event.detail;
+    var content = data.content;
     if (!content) return;
     wx.showLoading({ title: "发送中" });
-    api.sendPrivateReply({ postId: post._id, content: content }).then(function() {
+    try {
+      var result = await api.sendPrivateReply({ postId: data.post._id, content: content });
+      if (result.__fromFallback) {
+        wx.showToast({ title: "网络异常，请重试", icon: "none" });
+        return;
+      }
       wx.showToast({ title: "已发送", icon: "success" });
-    }).catch(function() {
+      var newComment = {
+        _id: "local_" + Date.now(),
+        fromUser: { nickName: "", avatarUrl: "" },
+        content: content,
+        createdAt: Date.now()
+      };
+      var comments = this.data.comments.slice();
+      comments.unshift(newComment);
+      this.setData({ comments: comments });
+    } catch (e) {
       wx.showToast({ title: "发送失败，请重试", icon: "none" });
-    }).finally(function() {
+    } finally {
       wx.hideLoading();
-    });
+    }
   },
 
   onGoChat(event) {

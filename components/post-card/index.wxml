@@ -74,7 +74,7 @@
         </view>
       </view>
 
-      <view wx:if="{{isMine && comments.length}}" class="mine-comments">
+      <view wx:if="{{(isMine || isFriend) && comments.length}}" class="mine-comments">
         <view wx:for="{{comments}}" wx:key="_id" class="mine-comment">
           <view class="mine-comment-avatar">{{item.fromUser && item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '匿'}}</view>
           <view class="mine-comment-right">
@@ -155,7 +155,7 @@
         </view>
       </view>
 
-      <view wx:if="{{isMine && comments.length}}" class="mine-comments">
+      <view wx:if="{{(isMine || isFriend) && comments.length}}" class="mine-comments">
         <view wx:for="{{comments}}" wx:key="_id" class="mine-comment">
           <view class="mine-comment-avatar">{{item.fromUser && item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '匿'}}</view>
           <view class="mine-comment-right">
