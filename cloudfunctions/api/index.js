@@ -129,7 +129,7 @@ async function getExcludedPostIds(openid) {
 
 async function getDiscoverFeed(openid, payload) {
   const user = await ensureUser(openid);
-  const scope = payload.scope || "city";
+  const scope = payload.scope;
   const pageSize = payload.pageSize || 30;
   const friendIds = await getFriendIds(openid);
   const excludedIds = await getExcludedPostIds(openid);
@@ -180,6 +180,7 @@ async function getDiscoverFeed(openid, payload) {
     const isFriend = friendIds.includes(post.authorId);
     return {
       ...post,
+      imageUrls: Array.isArray(post.imageUrls) ? post.imageUrls.map(function(url) { return typeof url === "string" ? url.trim() : url; }) : [],
       author: isFriend && author ? {
         nickName: author.nickName,
         avatarUrl: author.avatarUrl,
@@ -220,7 +221,7 @@ async function createPost(openid, payload) {
     title: title.slice(0, 40),
     body: body.slice(0, 800),
     icon: payload.icon || "💡",
-    imageUrls: Array.isArray(payload.imageUrls) ? payload.imageUrls.slice(0, 9) : [],
+    imageUrls: Array.isArray(payload.imageUrls) ? payload.imageUrls.slice(0, 9).map(function(url) { return typeof url === "string" ? url.trim() : url; }) : [],
     visibility: payload.visibility || "public",
     cityCode: payload.cityCode || user.cityCode,
     universityId: payload.universityId || user.universityId,
@@ -609,7 +610,13 @@ async function getMyPosts(openid) {
     .orderBy("createdAt", "desc")
     .limit(50)
     .get();
-  return ok({ posts: result.data });
+  const posts = result.data.map(function(post) {
+    if (Array.isArray(post.imageUrls)) {
+      post.imageUrls = post.imageUrls.map(function(url) { return typeof url === "string" ? url.trim() : url; });
+    }
+    return post;
+  });
+  return ok({ posts: posts });
 }
 
 async function getPostDetail(openid, payload) {
@@ -637,6 +644,7 @@ async function getPostDetail(openid, payload) {
 
   const enrichedPost = {
     ...post,
+    imageUrls: Array.isArray(post.imageUrls) ? post.imageUrls.map(function(url) { return typeof url === "string" ? url.trim() : url; }) : [],
     author: isFriend && post.authorId !== openid ? {
       nickName: (await getUserByOpenId(post.authorId))?.nickName || "好友",
       avatarUrl: (await getUserByOpenId(post.authorId))?.avatarUrl || "",

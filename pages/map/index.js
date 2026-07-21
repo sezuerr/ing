@@ -150,7 +150,6 @@ Page({
 
     try {
       var result = await api.getDiscoverFeed({
-        scope: "university",
         topicOnly: false
       });
       var posts = result.posts || [];

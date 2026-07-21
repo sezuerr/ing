@@ -34,6 +34,18 @@ Page({
   },
 
   onLike(event) {
+    var post = event.detail.post;
+    if (!post || !post._id) return;
+
+    var updatedPost = {};
+    for (var k in this.data.post) {
+      updatedPost[k] = this.data.post[k];
+    }
+    updatedPost.likedByMe = true;
+    if (typeof updatedPost.likeCount === "number") {
+      updatedPost.likeCount += 1;
+    }
+    this.setData({ post: updatedPost });
   },
 
   onMatch(event) {

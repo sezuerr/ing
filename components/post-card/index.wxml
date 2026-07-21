@@ -55,7 +55,7 @@
           </view>
         </view>
         <view wx:elif="{{likedByMe}}" class="footer-liked">
-          <view class="like-status liked">
+          <view class="like-status liked glow">
             <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
           </view>
           <text class="wait-text">已点亮</text>
@@ -67,7 +67,7 @@
           <text class="wait-text">已点亮</text>
         </view>
         <view wx:else class="footer-default">
-          <view class="icon-btn like-btn {{bulbLit ? 'glow' : ''}}" hover-class="like-btn-active" catchtap="like" aria-label="点亮">
+          <view class="icon-btn like-btn" hover-class="like-btn-active" catchtap="like" aria-label="点亮">
             <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
           </view>
           <text class="default-bulb-label">{{likedMe ? '回点TA' : '点亮'}}</text>
@@ -136,7 +136,7 @@
           </view>
         </view>
         <view wx:elif="{{likedByMe}}" class="footer-liked">
-          <view class="like-status liked">
+          <view class="like-status liked glow">
             <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
           </view>
           <text class="wait-text">已点亮</text>
@@ -148,7 +148,7 @@
           <text class="wait-text">已点亮</text>
         </view>
         <view wx:else class="footer-default">
-          <view class="icon-btn like-btn {{bulbLit ? 'glow' : ''}}" hover-class="like-btn-active" catchtap="like" aria-label="点亮">
+          <view class="icon-btn like-btn" hover-class="like-btn-active" catchtap="like" aria-label="点亮">
             <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
           </view>
           <text class="default-bulb-label">{{likedMe ? '回点TA' : '点亮'}}</text>

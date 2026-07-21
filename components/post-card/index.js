@@ -20,6 +20,13 @@ Component({
   observers: {
     post(post) {
       if (!post) return;
+      
+      // 【救命补丁1】强制清理图片 URL 前后的多余空格和换行
+      // 彻底解决 Failed to load local image resource 报错！
+      if (post.imageUrls && post.imageUrls.length > 0) {
+        post.imageUrls = post.imageUrls.map(url => typeof url === 'string' ? url.trim() : url);
+      }
+
       var currentUserId = this.data.currentUserId;
       var isMine = currentUserId && post.authorId === currentUserId;
       var isFriend = Boolean(post.author && post.author.isFriend);
@@ -35,6 +42,7 @@ Component({
       } else {
         name = (post.mutualFriendCount || 0) + " 个共同好友";
       }
+      
       this.setData({
         isMine: isMine,
         isFriend: isFriend,
@@ -45,8 +53,8 @@ Component({
         displayName: name,
         avatarText: isMine ? (name || "我").slice(0, 1).toUpperCase() : (isFriend ? (name || "友").slice(0, 1).toUpperCase() : "匿"),
         timeText: fromNow(post.createdAt),
-        liked: false,
-        bulbLit: false,
+        liked: this.data._liking ? this.data.liked : likedByMe,
+        bulbLit: this.data._liking ? this.data.bulbLit : likedByMe,
         draft: ""
       });
     }
@@ -68,7 +76,7 @@ Component({
   },
 
   methods: {
-    like() {
+    async like() {
       if (this.data._liking) return;
       if (this.data.likedByMe || this.data.matched) return;
 
@@ -83,29 +91,33 @@ Component({
       this.data._liking = true;
       this.setData({ liked: true, bulbLit: true });
 
-      var self = this;
-      wx.showLoading({ title: "处理中" });
-      api.likePost(this.data.post._id).then(function(result) {
-        if (result.__fromFallback) {
-          self.setData(previousState);
-          wx.showToast({ title: "网络异常，请重试", icon: "none" });
-          return;
+      wx.showLoading({ title: "处理中", mask: true });
+
+      try {
+        var postId = this.data.post._id;
+        var result = await api.likePost(postId);
+
+        if (result && result.__fromFallback) {
+          throw new Error("网络异常，无法连接云端");
         }
-        if (result.matched) {
-          self.setData({ matched: true, canComment: true });
-          self.triggerEvent("match", { post: self.data.post });
+
+        if (result && result.matched) {
+          this.setData({ matched: true, canComment: true });
+          this.triggerEvent("match", { post: this.data.post });
           wx.showToast({ title: "配对成功！解锁聊天", icon: "none" });
         } else {
-          self.setData({ likedByMe: true });
+          this.setData({ likedByMe: true });
+          this.triggerEvent("like", { post: this.data.post });
           wx.showToast({ title: "已点亮", icon: "none" });
         }
-      }).catch(function() {
-        self.setData(previousState);
-        wx.showToast({ title: "操作失败，请重试", icon: "none" });
-      }).finally(function() {
-        self.data._liking = false;
+      } catch (err) {
+        console.error("[likePost] 点赞真实报错原因:", err);
+        this.setData(previousState);
+        wx.showToast({ title: err.message || "操作失败，请重试", icon: "none" });
+      } finally {
         wx.hideLoading();
-      });
+        this.data._liking = false;
+      }
     },
 
     goChat() {

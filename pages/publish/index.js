@@ -6,7 +6,7 @@ Page({
   data: {
     locationText: "使用学校和模糊位置",
     location: null,
-    showLocation: false,
+    showLocation: true,
     submitting: false,
     form: {
       icon: "💡",
@@ -21,6 +21,7 @@ Page({
   onShow() {
     this.setTab();
     this.loadDailyTopic();
+    this.refreshLocation();
   },
 
   setTab() {
@@ -55,31 +56,46 @@ Page({
   },
 
   chooseImages() {
+    var max = 9 - this.data.form.imageUrls.length;
+    if (max <= 0) return;
+
+    var app = getApp();
+    if (!wx.cloud || !app.globalData.cloudReady) {
+      wx.showToast({ title: "云服务暂不可用，请稍后重试", icon: "none" });
+      return;
+    }
+
     wx.chooseMedia({
-      count: 9 - this.data.form.imageUrls.length,
+      count: max,
       mediaType: ["image"],
       success: async (res) => {
-        const tempFiles = res.tempFiles || [];
-        const app = getApp();
-        const urls = [];
-        for (const file of tempFiles) {
-          if (wx.cloud && app.globalData.cloudReady) {
-            try {
-              const ext = (file.tempFilePath.split(".").pop() || "jpg").toLowerCase();
-              const uploaded = await wx.cloud.uploadFile({
-                cloudPath: `posts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,
-                filePath: file.tempFilePath
-              });
-              urls.push(uploaded.fileID);
-            } catch (error) {
-              console.warn("upload image fallback", error);
-              urls.push(file.tempFilePath);
-            }
-          } else {
-            urls.push(file.tempFilePath);
+        var tempFiles = res.tempFiles || [];
+        var urls = [];
+        var failCount = 0;
+
+        wx.showLoading({ title: "上传中" });
+        for (var i = 0; i < tempFiles.length; i++) {
+          var file = tempFiles[i];
+          try {
+            var ext = (file.tempFilePath.split(".").pop() || "jpg").toLowerCase();
+            var uploaded = await wx.cloud.uploadFile({
+              cloudPath: "posts/" + Date.now() + "_" + Math.random().toString(36).slice(2) + "." + ext,
+              filePath: file.tempFilePath
+            });
+            urls.push(uploaded.fileID.trim());
+          } catch (error) {
+            failCount++;
+            console.warn("[publish] 图片上传失败", error);
           }
         }
-        this.setData({ "form.imageUrls": this.data.form.imageUrls.concat(urls).slice(0, 9) });
+        wx.hideLoading();
+
+        if (failCount > 0) {
+          wx.showToast({ title: failCount + " 张图片上传失败，已自动移除", icon: "none" });
+        }
+        if (urls.length > 0) {
+          this.setData({ "form.imageUrls": this.data.form.imageUrls.concat(urls).slice(0, 9) });
+        }
       }
     });
   },

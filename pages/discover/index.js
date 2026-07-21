@@ -120,11 +120,22 @@ Page({
         });
       }
 
+      var prevId = this.data.currentPost && this.data.currentPost._id;
+      var currentIndex = 0;
+      if (prevId) {
+        for (var i = 0; i < posts.length; i++) {
+          if (posts[i]._id === prevId) {
+            currentIndex = i;
+            break;
+          }
+        }
+      }
+
       this.setData({
         posts: posts,
-        currentIndex: 0,
-        currentPost: posts[0] || null,
-        nextPost: posts[1] || null
+        currentIndex: currentIndex,
+        currentPost: posts[currentIndex] || null,
+        nextPost: posts[currentIndex + 1] || null
       });
     } catch (e) {
       console.error("[discover] loadFeed 异常", e);
@@ -246,20 +257,63 @@ Page({
   likePost(event) {
     var post = event.detail.post;
     if (!post || !post._id) return;
+
+    var posts = this.data.posts;
+    var idx = -1;
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i]._id === post._id) {
+        idx = i;
+        break;
+      }
+    }
+    if (idx === -1) return;
+
+    var updatedPost = {};
+    for (var k in posts[idx]) {
+      updatedPost[k] = posts[idx][k];
+    }
+    updatedPost.likedByMe = true;
+    if (typeof updatedPost.likeCount === "number") {
+      updatedPost.likeCount += 1;
+    }
+
+    var newPosts = posts.slice();
+    newPosts[idx] = updatedPost;
+
+    this.setData({
+      posts: newPosts,
+      currentPost: updatedPost
+    });
   },
 
   onMatch(event) {
     var post = event.detail.post;
     if (!post) return;
+
     var posts = this.data.posts;
+    var idx = -1;
     for (var i = 0; i < posts.length; i++) {
       if (posts[i]._id === post._id) {
-        posts[i].matched = true;
-        posts[i].likedByMe = true;
+        idx = i;
         break;
       }
     }
-    this.setData({ posts: posts, currentPost: post });
+    if (idx === -1) return;
+
+    var updatedPost = {};
+    for (var k in posts[idx]) {
+      updatedPost[k] = posts[idx][k];
+    }
+    updatedPost.matched = true;
+    updatedPost.likedByMe = true;
+
+    var newPosts = posts.slice();
+    newPosts[idx] = updatedPost;
+
+    this.setData({
+      posts: newPosts,
+      currentPost: updatedPost
+    });
   },
 
   goChat(event) {
