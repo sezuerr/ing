@@ -120,6 +120,11 @@ function getPostDetail(postId) {
   return callApi("getPostDetail", { postId }, { post, comments });
 }
 
+function getPostLikers(postId) {
+  const likers = (mock.postLikers || []).filter((item) => item.postId === postId);
+  return callApi("getPostLikers", { postId }, { likers });
+}
+
 function getUniversities() {
   const { UNIVERSITIES } = require("./constants");
   return callApi("getUniversities", {}, UNIVERSITIES);
@@ -143,5 +148,6 @@ module.exports = {
   unmatchUser,
   getMyPosts,
   getPostDetail,
+  getPostLikers,
   getUniversities
 };

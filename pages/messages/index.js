@@ -8,10 +8,6 @@ Page({
     pollingTimer: null
   },
 
-  goHome() {
-    wx.switchTab({ url: "/pages/discover/index" });
-  },
-
   onShow() {
     this.setTab();
     this.load();

@@ -36,12 +36,14 @@ Component({
       }
       this.setData({
         isMine: isMine,
+        isFriend: isFriend,
         canComment: isFriend || likedMe || isMine,
         matched: post.matched || false,
         likedMe: likedMe,
         likedByMe: likedByMe,
         displayName: name,
         avatarText: isMine ? (name || "我").slice(0, 1).toUpperCase() : (isFriend ? (name || "友").slice(0, 1).toUpperCase() : "匿"),
+        authorAvatarUrl: (post.author && post.author.avatarUrl) || "",
         timeText: fromNow(post.createdAt),
         liked: false,
         bulbLit: false,
@@ -52,11 +54,13 @@ Component({
 
   data: {
     isMine: false,
+    isFriend: false,
     canComment: false,
     matched: false,
     likedMe: false,
     displayName: "",
     avatarText: "匿",
+    authorAvatarUrl: "",
     timeText: "",
     likedByMe: false,
     liked: false,

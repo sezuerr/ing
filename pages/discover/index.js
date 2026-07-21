@@ -57,12 +57,7 @@ Page({
     currentIndex: 0,
     currentPost: null,
     nextPost: null,
-    windowWidth: 375,
-    // 核心圈
-    circleVisible: false,
-    myPasscode: "",
-    friendPasscode: "",
-    passcodeResult: ""
+    windowWidth: 375
   },
 
   onLoad() {
@@ -72,17 +67,16 @@ Page({
       windowWidth: info.windowWidth || 375,
       statusBarHeight: sysInfo.statusBarHeight
     });
-    this.generateMyPasscode();
   },
 
   onShow() {
     var app = getApp();
     var cu = app && app.globalData && app.globalData.currentUser;
-    if (!cu || !cu._id) {
+    if (!cu || !(cu.openid || cu._id)) {
       cu = mock.currentUser;
     }
-    if (cu && cu._id) {
-      this.setData({ currentUserId: cu._id });
+    if (cu && (cu.openid || cu._id)) {
+      this.setData({ currentUserId: cu.openid || cu._id });
     }
     this.setTab();
     this.loadFeed();
@@ -147,60 +141,6 @@ Page({
   },
 
   noop() {},
-
-  /* ===== 核心圈 ===== */
-  generateMyPasscode() {
-    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    var code = "";
-    for (var i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    this.setData({ myPasscode: code });
-  },
-
-  openCircle() {
-    this.setData({ circleVisible: true, passcodeResult: "" });
-  },
-
-  closeCircle() {
-    this.setData({ circleVisible: false, friendPasscode: "", passcodeResult: "" });
-  },
-
-  onPasscodeInput(e) {
-    this.setData({ friendPasscode: e.detail.value.toUpperCase(), passcodeResult: "" });
-  },
-
-  verifyPasscode() {
-    var code = this.data.friendPasscode.trim();
-    if (!code) {
-      this.setData({ passcodeResult: "请输入口令" });
-      return;
-    }
-    if (code === this.data.myPasscode) {
-      this.setData({ passcodeResult: "不能添加自己哦" });
-      return;
-    }
-    // 模拟验证：任何 6 位字符串视为有效
-    if (code.length >= 4) {
-      this.setData({ passcodeResult: "已添加为核心好友！" });
-      var self = this;
-      setTimeout(function() {
-        self.closeCircle();
-        wx.showToast({ title: "核心圈已解锁", icon: "success" });
-      }, 1000);
-    } else {
-      this.setData({ passcodeResult: "口令无效，请检查" });
-    }
-  },
-
-  copyPasscode() {
-    wx.setClipboardData({
-      data: this.data.myPasscode,
-      success: function() {
-        wx.showToast({ title: "口令已复制", icon: "success" });
-      }
-    });
-  },
 
   changeScope(event) {
     var scope = event.currentTarget.dataset.value;

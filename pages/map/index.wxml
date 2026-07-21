@@ -1,4 +1,5 @@
 <view class="map-page">
+  <image class="top-logo" src="/icons/ing_logo.png" mode="aspectFit" />
   <map
     id="campusMap"
     class="campus-map"
@@ -11,10 +12,6 @@
     bindcallouttap="onCalloutTap"
     bindregionchange="onRegionChange"
   />
-
-  <view class="corner-bulb" catchtap="goHome">
-    <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit"></image>
-  </view>
 
   <view class="popover-overlay {{showPopover ? 'show' : ''}}" catchtap="closePopover">
     <view wx:if="{{popoverData}}" class="popover-card-wrapper" catchtap="noop">

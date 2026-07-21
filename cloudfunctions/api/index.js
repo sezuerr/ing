@@ -180,7 +180,7 @@ async function createPost(openid, payload) {
   const user = await ensureUser(openid);
   const title = String(payload.title || "").trim();
   const body = String(payload.body || "").trim();
-  if (!title || !body) return fail("标题和正文不能为空");
+  if (!body) return fail("正文不能为空");
 
   const doc = {
     authorId: openid,
@@ -559,6 +559,37 @@ async function getPostDetail(openid, payload) {
   return ok({ post, comments: enrichedComments });
 }
 
+async function getPostLikers(openid, payload) {
+  const post = (await db.collection(C.posts).doc(payload.postId).get()).data;
+  if (!post) return fail("帖子不存在", "NOT_FOUND");
+  if (post.authorId !== openid) return fail("无权查看", "FORBIDDEN");
+
+  const likesResult = await db.collection(C.likes)
+    .where({ postId: payload.postId })
+    .orderBy("createdAt", "desc")
+    .limit(200)
+    .get();
+
+  const likers = [];
+  for (const like of likesResult.data) {
+    const user = await getUserByOpenId(like.fromUserId);
+    const friendIds = await getFriendIds(openid);
+    const isFriend = friendIds.includes(like.fromUserId);
+    likers.push({
+      _id: like._id,
+      postId: like.postId,
+      fromUser: {
+        _id: user ? user._id : "",
+        nickName: isFriend && user ? (user.nickName || "") : "",
+        avatarUrl: isFriend && user ? (user.avatarUrl || "") : "",
+        isFriend: isFriend
+      },
+      createdAt: like.createdAt
+    });
+  }
+  return ok({ likers });
+}
+
 async function getUniversities() {
   const result = await db.collection(C.universities).limit(200).get();
   return ok(result.data);
@@ -582,6 +613,7 @@ const handlers = {
   markPostAction,
   getMyPosts,
   getPostDetail,
+  getPostLikers,
   getUniversities
 };
 

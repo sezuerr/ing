@@ -11,7 +11,7 @@ Component({
   observers: {
     post(post) {
       this.setData({
-        needsExpand: Boolean(post && post.body && post.body.length > 80),
+        needsExpand: Boolean(post && post.body && post.body.length > 96),
         timeText: post && post.createdAt ? fromNow(post.createdAt) : ""
       });
     }

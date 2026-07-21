@@ -1,5 +1,6 @@
 const api = require("../../utils/cloud");
 const { coarseGeoHash } = require("../../utils/geo");
+const { TOPIC_ICONS, VISIBILITY_OPTIONS } = require("../../utils/constants");
 const mock = require("../../utils/mock");
 
 Page({
@@ -8,6 +9,11 @@ Page({
     location: null,
     showLocation: false,
     submitting: false,
+    bodyLength: 0,
+    topicIcons: TOPIC_ICONS,
+    visibilityOpen: false,
+    visibilityOptions: VISIBILITY_OPTIONS,
+    visibilityLabel: "所有人可见",
     form: {
       icon: "💡",
       title: "",
@@ -20,7 +26,6 @@ Page({
 
   onShow() {
     this.setTab();
-    this.loadDailyTopic();
   },
 
   setTab() {
@@ -29,34 +34,44 @@ Page({
     }
   },
 
-  loadDailyTopic() {
-    if (!this.data.form.title) {
-      this.setData({
-        "form.title": mock.dailyTopic.title,
-        "form.icon": mock.dailyTopic.icon
-      });
-    }
-  },
-
-  onIconChange(event) {
-    this.setData({ "form.icon": event.detail.value });
-  },
-
-  onTitleInput(event) {
-    this.setData({ "form.title": event.detail.value });
+  onEmojiSelect(event) {
+    this.setData({ "form.icon": event.currentTarget.dataset.icon });
   },
 
   onBodyInput(event) {
-    this.setData({ "form.body": event.detail.value });
+    const value = event.detail.value;
+    this.setData({
+      "form.body": value,
+      bodyLength: value.length
+    });
   },
 
-  onVisibilityChange(event) {
-    this.setData({ "form.visibility": event.detail.value });
+  openVisibility() {
+    this.setData({ visibilityOpen: true });
   },
+
+  closeVisibility() {
+    this.setData({ visibilityOpen: false });
+  },
+
+  selectVisibility(e) {
+    var val = e.currentTarget.dataset.value;
+    var opt = this.data.visibilityOptions.find(function(o) { return o.value === val; });
+    this.setData({
+      "form.visibility": val,
+      visibilityLabel: opt ? opt.label : val,
+      visibilityOpen: false
+    });
+  },
+
+  noop() {},
 
   chooseImages() {
+    const remaining = 9 - this.data.form.imageUrls.length;
+    if (remaining <= 0) return;
+
     wx.chooseMedia({
-      count: 9 - this.data.form.imageUrls.length,
+      count: remaining,
       mediaType: ["image"],
       success: async (res) => {
         const tempFiles = res.tempFiles || [];
@@ -79,16 +94,24 @@ Page({
             urls.push(file.tempFilePath);
           }
         }
-        this.setData({ "form.imageUrls": this.data.form.imageUrls.concat(urls).slice(0, 9) });
+        this.setData({
+          "form.imageUrls": this.data.form.imageUrls.concat(urls).slice(0, 9)
+        });
       }
     });
+  },
+
+  removeImage(event) {
+    const index = event.currentTarget.dataset.index;
+    const imageUrls = [...this.data.form.imageUrls];
+    imageUrls.splice(index, 1);
+    this.setData({ "form.imageUrls": imageUrls });
   },
 
   toggleShowLocation() {
     var next = !this.data.showLocation;
     this.setData({ showLocation: next });
     if (next) {
-      // 开启时自动获取定位
       this.refreshLocation();
     } else {
       this.setData({ location: null, locationText: "使用学校和模糊位置" });
@@ -113,10 +136,6 @@ Page({
 
   async submit() {
     const { form } = this.data;
-    if (!form.title.trim()) {
-      wx.showToast({ title: "请填写标题", icon: "none" });
-      return;
-    }
     if (!form.body.trim()) {
       wx.showToast({ title: "请填写正文", icon: "none" });
       return;
@@ -134,7 +153,6 @@ Page({
         cityCode: user.cityCode
       };
 
-      // 仅当用户允许显示位置时提交经纬度
       if (this.data.showLocation && this.data.location) {
         payload.latitude = this.data.location.latitude;
         payload.longitude = this.data.location.longitude;
@@ -142,15 +160,15 @@ Page({
 
       const created = await api.createPost(payload);
 
-      // 只有真正走通云函数才会拿到服务端 _id；本地兜底会是 local_ 前缀。
       if (created && typeof created._id === "string" && created._id.startsWith("local_")) {
         console.warn("[publish] 发布走了本地兜底，未真正写入数据库", created);
       }
 
       this.setData({
+        bodyLength: 0,
         form: {
           icon: "💡",
-          title: mock.dailyTopic.title,
+          title: "",
           body: "",
           imageUrls: [],
           visibility: "public",

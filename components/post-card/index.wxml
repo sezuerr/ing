@@ -4,11 +4,15 @@
     <view class="hero">
       <image class="hero-image" mode="aspectFill" src="{{post.imageUrls[0]}}" />
       <view class="hero-overlay"></view>
-      <view class="report report-hero" catchtap="openReport" aria-label="举报或不感兴趣">
+      <view wx:if="{{!isMine}}" class="report report-hero" catchtap="openReport" aria-label="举报或不感兴趣">
         <image class="report-icon report-icon-hero" src="/icons/hand.svg" mode="aspectFit" />
       </view>
       <view class="identity identity-hero">
-        <view class="avatar avatar-hero">{{avatarText}}</view>
+        <view class="avatar avatar-hero {{!isMine && !isFriend ? 'avatar-emoji-wrap' : ''}}">
+          <image wx:if="{{(isMine || isFriend) && authorAvatarUrl}}" src="{{authorAvatarUrl}}" mode="aspectFill" />
+          <text wx:elif="{{!isMine && !isFriend}}" class="avatar-emoji">{{post.icon || '💡'}}</text>
+          <text wx:else>{{avatarText}}</text>
+        </view>
         <view class="meta-text">
           <view class="name name-hero">
             {{displayName}}
@@ -16,19 +20,13 @@
             <text wx:elif="{{likedByMe && !likedMe && !matched}}" class="liked-me-badge">点亮过ta</text>
             <text wx:elif="{{!likedMe && !matched && !isMine}}" class="not-liked-badge">未点亮</text>
           </view>
-          <view class="sub sub-hero">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
+          <view wx:if="{{!isMine}}" class="sub sub-hero">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
         </view>
       </view>
     </view>
 
     <view class="body body-floating">
       <view class="content">
-        <view class="title-row">
-          <view class="topic-badge">
-            <text class="topic-badge-icon">{{post.icon || '💡'}}</text>
-          </view>
-          <text class="title">{{post.title}}</text>
-        </view>
         <text class="body-text">{{post.body}}</text>
         <scroll-view wx:if="{{post.imageUrls.length > 1}}" scroll-x class="images">
           <image wx:for="{{post.imageUrls}}" wx:key="*this" class="image" mode="aspectFill" src="{{item}}" />
@@ -84,7 +82,11 @@
     <view class="body">
       <view class="meta">
         <view class="identity">
-          <view class="avatar">{{avatarText}}</view>
+          <view class="avatar {{!isMine && !isFriend ? 'avatar-emoji-wrap' : ''}}">
+            <image wx:if="{{isMine && authorAvatarUrl}}" src="{{authorAvatarUrl}}" mode="aspectFill" />
+            <text wx:elif="{{!isMine && !isFriend}}" class="avatar-emoji">{{post.icon || '💡'}}</text>
+            <text wx:else>{{avatarText}}</text>
+          </view>
           <view class="meta-text">
             <view class="name">
             {{displayName}}
@@ -92,21 +94,15 @@
             <text wx:elif="{{likedByMe && !likedMe && !matched}}" class="liked-me-badge">点亮过ta</text>
             <text wx:elif="{{!likedMe && !matched && !isMine}}" class="not-liked-badge">未点亮</text>
           </view>
-            <view class="sub">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
+            <view wx:if="{{!isMine}}" class="sub">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
           </view>
         </view>
-        <view class="report" catchtap="openReport" aria-label="举报或不感兴趣">
+        <view wx:if="{{!isMine}}" class="report" catchtap="openReport" aria-label="举报或不感兴趣">
           <image class="report-icon" src="/icons/hand.svg" mode="aspectFit" />
         </view>
       </view>
 
       <view class="content">
-        <view class="title-row">
-          <view class="topic-badge">
-            <text class="topic-badge-icon">{{post.icon || '💡'}}</text>
-          </view>
-          <text class="title">{{post.title}}</text>
-        </view>
         <text class="body-text">{{post.body}}</text>
       </view>
 

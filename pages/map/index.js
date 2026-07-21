@@ -15,10 +15,6 @@ Page({
     currentUserId: ""
   },
 
-  goHome() {
-    wx.switchTab({ url: "/pages/discover/index" });
-  },
-
   _markerIdCounter: 0,
   _markerDataMap: {},
   _located: false,
@@ -26,8 +22,8 @@ Page({
   onLoad() {
     var app = getApp();
     var cu = app && app.globalData && app.globalData.currentUser;
-    if (cu && cu._id) {
-      this.setData({ currentUserId: cu._id });
+    if (cu && (cu.openid || cu._id)) {
+      this.setData({ currentUserId: cu.openid || cu._id });
     }
     this._locateUser();
   },

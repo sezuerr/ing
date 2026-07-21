@@ -5,7 +5,7 @@ const now = Date.now();
 const myPosts = [
   {
     _id: "post_mine_1",
-    authorId: "user_demo",
+    authorId: "demo_openid",
     author: { nickName: "小黄灯", avatarUrl: "", isFriend: true },
     title: "明德楼的灯还亮着",
     body: "路过发现三楼还有人在赶作业，突然觉得没那么孤单了。",
@@ -21,7 +21,7 @@ const myPosts = [
   },
   {
     _id: "post_mine_2",
-    authorId: "user_demo",
+    authorId: "demo_openid",
     author: { nickName: "小黄灯", avatarUrl: "", isFriend: true },
     title: "一勺池旁边有人喂鸽子",
     body: "下午坐在一勺池旁边发呆，看到有人在喂鸽子，好治愈。",
@@ -320,6 +320,22 @@ const conversations = [
   }
 ];
 
+// 点亮记录
+const postLikers = [
+  // post_mine_1 的点亮者
+  { _id: "like_m1_1", postId: "post_mine_1", fromUser: { nickName: "清风的歌", avatarUrl: "", isFriend: true, _id: "user_a" }, createdAt: Date.now() - 1000 * 60 * 60 * 3 },
+  { _id: "like_m1_2", postId: "post_mine_1", fromUser: { nickName: "干饭人", avatarUrl: "", isFriend: false, _id: "user_b" }, createdAt: Date.now() - 1000 * 60 * 60 * 5 },
+  { _id: "like_m1_3", postId: "post_mine_1", fromUser: { nickName: "自习战神", avatarUrl: "", isFriend: true, _id: "user_e" }, createdAt: Date.now() - 1000 * 60 * 60 * 8 },
+  { _id: "like_m1_4", postId: "post_mine_1", fromUser: { nickName: "摸鱼王者", avatarUrl: "", isFriend: true, _id: "user_g" }, createdAt: Date.now() - 1000 * 60 * 60 * 12 },
+  { _id: "like_m1_5", postId: "post_mine_1", fromUser: { nickName: "", avatarUrl: "", isFriend: false, _id: "user_c" }, createdAt: Date.now() - 1000 * 60 * 60 * 20 },
+  { _id: "like_m1_6", postId: "post_mine_1", fromUser: { nickName: "", avatarUrl: "", isFriend: false, _id: "user_d" }, createdAt: Date.now() - 1000 * 60 * 60 * 24 },
+  // post_mine_2 的点亮者
+  { _id: "like_m2_1", postId: "post_mine_2", fromUser: { nickName: "鸽王", avatarUrl: "", isFriend: false, _id: "user_j" }, createdAt: Date.now() - 1000 * 60 * 60 * 2 },
+  { _id: "like_m2_2", postId: "post_mine_2", fromUser: { nickName: "早八起不来", avatarUrl: "", isFriend: false, _id: "user_h" }, createdAt: Date.now() - 1000 * 60 * 60 * 6 },
+  { _id: "like_m2_3", postId: "post_mine_2", fromUser: { nickName: "清风的歌", avatarUrl: "", isFriend: true, _id: "user_a" }, createdAt: Date.now() - 1000 * 60 * 60 * 10 },
+  { _id: "like_m2_4", postId: "post_mine_2", fromUser: { nickName: "", avatarUrl: "", isFriend: false, _id: "user_f" }, createdAt: Date.now() - 1000 * 60 * 60 * 18 }
+];
+
 // 当前用户的帖子收到的评论/私密回复
 const comments = [
   {
@@ -371,6 +387,7 @@ module.exports = {
   currentUser,
   posts,
   myPosts,
+  postLikers,
   comments,
   messages,
   notifications,
