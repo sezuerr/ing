@@ -65,7 +65,26 @@ function updateProfile(profile) {
 }
 
 function getDiscoverFeed(params) {
-  return callApi("getDiscoverFeed", params, { posts: mock.posts, dailyTopic: mock.dailyTopic });
+  const fallbackPosts = function() {
+    var posts = mock.posts.concat([]);
+    var scope = params.scope || "university";
+    var user = mock.currentUser;
+
+    if (scope === "university") {
+      posts = posts.filter(function(p) { return p.universityId && p.universityId === user.universityId; });
+    } else if (scope === "city") {
+      posts = posts.filter(function(p) { return p.cityCode && p.cityCode === user.cityCode && p.universityId !== user.universityId; });
+    }
+
+    if (params.topicIcon) {
+      var selectedIcons = params.topicIcon.split(",");
+      posts = posts.filter(function(p) { return selectedIcons.indexOf(p.icon) !== -1; });
+    }
+
+    return { posts: posts, dailyTopic: mock.dailyTopic };
+  };
+
+  return callApi("getDiscoverFeed", params, fallbackPosts());
 }
 
 // --- 新增：内容安全审核 START ---

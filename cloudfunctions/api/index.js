@@ -157,7 +157,7 @@ function canSeePost(post, user, friendIds) {
 function applyScope(post, user, scope, friendIds) {
   if (scope === "university") return post.universityId && post.universityId === user.universityId;
   if (scope === "friends") return friendIds.includes(post.authorId);
-  return post.cityCode && post.cityCode === user.cityCode;
+  return post.cityCode && post.cityCode === user.cityCode && post.universityId !== user.universityId;
 }
 
 async function getFriendIds(openid) {
@@ -469,9 +469,7 @@ async function createPost(openid, payload) {
     body: body.slice(0, 800),
     icon: payload.icon || "💡",
     imageUrls: Array.isArray(payload.imageUrls) ? payload.imageUrls.slice(0, 9) : [],
-    // --- 新增：保存审核凭证 START ---
     mediaCheckTraces: Array.isArray(payload.mediaCheckTraces) ? payload.mediaCheckTraces : [],
-    // --- 新增：保存审核凭证 END ---
     visibility: payload.visibility || "public",
     cityCode: payload.cityCode || user.cityCode,
     universityId: payload.universityId || user.universityId,

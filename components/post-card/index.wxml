@@ -13,7 +13,7 @@
           <text wx:if="{{likedMe && !matched}}" class="badge badge-liked">点亮过你</text>
           <text wx:elif="{{matched}}" class="badge badge-matched">已配对</text>
         </view>
-        <text class="header-time">{{timeText}} · {{post.distanceText || '距离未知'}}</text>
+        <text class="header-time">{{timeText}}{{post.universityName ? ' · ' + post.universityName : ''}} · {{post.distanceText || '距离未知'}}</text>
       </view>
     </view>
     <view wx:if="{{!isMine}}" class="report-btn" catchtap="openReport">
