@@ -24,12 +24,14 @@
 
 .body {
   min-width: 0;
+  flex: 1;
   margin-left: 18rpx;
 }
 
 .topline {
   display: flex;
   align-items: center;
+  width: 100%;
 }
 
 .title {

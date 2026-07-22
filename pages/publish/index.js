@@ -7,7 +7,7 @@ Page({
   data: {
     locationText: "使用学校和模糊位置",
     location: null,
-    showLocation: false,
+    showLocation: true,
     submitting: false,
     bodyLength: 0,
     topicIcons: TOPIC_ICONS,
@@ -26,6 +26,7 @@ Page({
 
   onShow() {
     this.setTab();
+    this.refreshLocation();
   },
 
   setTab() {

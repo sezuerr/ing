@@ -5,6 +5,10 @@ Component({
     post: {
       type: Object,
       value: {}
+    },
+    showStats: {
+      type: Boolean,
+      value: true
     }
   },
 

@@ -48,8 +48,47 @@ Page({
 
     this.setData({
       post, comments, currentUserId, likers,
-      isMine, authorName, authorAvatar, avatarText, timeText
+      isMine, authorName, authorAvatar, avatarText, timeText,
+      myNickName: cu.nickName || "",
+      myAvatarUrl: cu.avatarUrl || ""
     });
+
+    // 转换云存储图片链接
+    this.resolveDetailImages(post, comments, likers);
+  },
+
+  async resolveDetailImages(post, comments, likers) {
+    var allUrls = [];
+    if (post.author && post.author.avatarUrl) allUrls.push(post.author.avatarUrl);
+    if (post.imageUrls && post.imageUrls.length) allUrls = allUrls.concat(post.imageUrls);
+    if (comments) {
+      comments.forEach(function(c) {
+        if (c.fromUser && c.fromUser.avatarUrl) allUrls.push(c.fromUser.avatarUrl);
+      });
+    }
+    if (likers) {
+      likers.forEach(function(l) {
+        if (l.fromUser && l.fromUser.avatarUrl) allUrls.push(l.fromUser.avatarUrl);
+      });
+    }
+    if (!allUrls.length) return;
+    allUrls = allUrls.filter(function(u, i) { return u && allUrls.indexOf(u) === i; });
+    var resolved = await api.resolveImageUrls(allUrls);
+    var map = {};
+    allUrls.forEach(function(u, i) { map[u] = resolved[i]; });
+    if (post.author && post.author.avatarUrl && map[post.author.avatarUrl]) post.author.avatarUrl = map[post.author.avatarUrl];
+    if (post.imageUrls && post.imageUrls.length) post.imageUrls = post.imageUrls.map(function(u) { return map[u] || u; });
+    if (comments) {
+      comments.forEach(function(c) {
+        if (c.fromUser && c.fromUser.avatarUrl && map[c.fromUser.avatarUrl]) c.fromUser.avatarUrl = map[c.fromUser.avatarUrl];
+      });
+    }
+    if (likers) {
+      likers.forEach(function(l) {
+        if (l.fromUser && l.fromUser.avatarUrl && map[l.fromUser.avatarUrl]) l.fromUser.avatarUrl = map[l.fromUser.avatarUrl];
+      });
+    }
+    this.setData({ post: post, comments: comments, likers: likers });
   },
 
   switchTab(e) {
@@ -87,13 +126,23 @@ Page({
   },
 
   // post-card 组件事件转发
-  onLike(event) {
+  async onLike(event) {
     var post = event.detail.post;
-  },
-
-  onMatch(event) {
-    var post = event.detail.post;
-    wx.showToast({ title: "配对成功，可以聊天了", icon: "none" });
+    try {
+      var result = await api.likePost(post._id);
+      var matched = result && result.matched;
+      if (matched) {
+        post.matched = true;
+        post.likedByMe = true;
+        this.setData({ post: post });
+        wx.showToast({ title: "配对成功，可以聊天了", icon: "none" });
+      } else {
+        wx.showToast({ title: "已点亮 · 等待回应", icon: "none" });
+      }
+    } catch (e) {
+      console.error("点亮失败", e);
+      wx.showToast({ title: "网络异常，请重试", icon: "none" });
+    }
   },
 
   onReply(event) {

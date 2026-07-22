@@ -41,6 +41,21 @@ async function callApi(action, data = {}, fallback) {
   return normalizeResult(result, fallback);
 }
 
+// 写操作专用：网络错误时不降级，直接抛出，让页面提示用户重试
+async function callApiWrite(action, data = {}) {
+  if (!canUseCloud()) {
+    const err = new Error("云能力不可用");
+    err.code = "CLOUD_UNAVAILABLE";
+    throw err;
+  }
+
+  const result = await wx.cloud.callFunction({
+    name: "api",
+    data: { action, payload: data }
+  });
+  return normalizeResult(result, null);
+}
+
 function loginAndSyncProfile(profile = {}) {
   return callApi("loginAndSyncProfile", profile, mock.currentUser);
 }
@@ -58,7 +73,7 @@ function createPost(post) {
 }
 
 function likePost(postId) {
-  return callApi("likePost", { postId }, { matched: false });
+  return callApiWrite("likePost", { postId });
 }
 
 function sendPrivateReply(payload) {
@@ -130,6 +145,24 @@ function getUniversities() {
   return callApi("getUniversities", {}, UNIVERSITIES);
 }
 
+async function resolveImageUrls(urls) {
+  if (!urls || !urls.length) return urls || [];
+  if (!wx.cloud) return urls;
+  const fileIDs = urls.filter(function(u) { return u && typeof u === "string" && u.startsWith("cloud://"); });
+  if (!fileIDs.length) return urls;
+  try {
+    const result = await wx.cloud.getTempFileURL({ fileList: fileIDs });
+    var map = {};
+    (result.fileList || []).forEach(function(f) {
+      if (f.tempFileURL) map[f.fileID] = f.tempFileURL;
+    });
+    return urls.map(function(u) { return map[u] || u; });
+  } catch (e) {
+    console.warn("转换云存储图片链接失败", e);
+    return urls;
+  }
+}
+
 module.exports = {
   loginAndSyncProfile,
   updateProfile,
@@ -149,5 +182,6 @@ module.exports = {
   getMyPosts,
   getPostDetail,
   getPostLikers,
-  getUniversities
+  getUniversities,
+  resolveImageUrls
 };

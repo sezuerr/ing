@@ -1,5 +1,26 @@
 const { fromNow } = require("../../utils/time");
 
+// 评论时间简短显示
+function shortTime(ts) {
+  var diff = Date.now() - new Date(ts).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return "刚刚";
+  if (mins < 60) return mins + "分钟前";
+  var hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + "小时前";
+  var days = Math.floor(hours / 24);
+  if (days < 30) return days + "天前";
+  return Math.floor(days / 30) + "个月前";
+}
+
+// 根据图片数量决定布局类型
+function getImageLayout(count) {
+  if (count === 1) return "one";
+  if (count === 2) return "two";
+  if (count === 4) return "four";
+  return "grid"; // 3, 5, 6, 7, 8, 9 → 3列网格
+}
+
 Component({
   properties: {
     post: {
@@ -7,6 +28,14 @@ Component({
       value: null
     },
     currentUserId: {
+      type: String,
+      value: ""
+    },
+    myNickName: {
+      type: String,
+      value: ""
+    },
+    myAvatarUrl: {
       type: String,
       value: ""
     },
@@ -34,6 +63,8 @@ Component({
       } else {
         name = (post.mutualFriendCount || 0) + " 个共同好友";
       }
+      var alreadyLiked = likedByMe || post.matched || false;
+      var imgCount = (post.imageUrls && post.imageUrls.length) || 0;
       this.setData({
         isMine: isMine,
         isFriend: isFriend,
@@ -45,8 +76,9 @@ Component({
         avatarText: isMine ? (name || "我").slice(0, 1).toUpperCase() : (isFriend ? (name || "友").slice(0, 1).toUpperCase() : "匿"),
         authorAvatarUrl: (post.author && post.author.avatarUrl) || "",
         timeText: fromNow(post.createdAt),
-        liked: false,
-        bulbLit: false,
+        liked: alreadyLiked,
+        bulbLit: alreadyLiked,
+        imageLayout: getImageLayout(imgCount),
         draft: ""
       });
     }
@@ -65,6 +97,7 @@ Component({
     likedByMe: false,
     liked: false,
     bulbLit: false,
+    imageLayout: "grid",
     draft: ""
   },
 
@@ -72,15 +105,10 @@ Component({
     like() {
       if (this.data.liked || this.data.matched) return;
       this.setData({ liked: true, bulbLit: true });
-      wx.showToast({ title: "已点亮 💡", icon: "none", duration: 1500 });
-
+      this.triggerEvent("like", { post: this.data.post });
       if (this.data.likedMe) {
         this.setData({ matched: true, canComment: true });
-        this.triggerEvent("match", { post: this.data.post });
-        return;
       }
-
-      this.triggerEvent("like", { post: this.data.post });
     },
 
     goChat() {
@@ -98,6 +126,42 @@ Component({
       if (!content) return;
       this.triggerEvent("reply", { post: this.data.post, content });
       this.setData({ draft: "" });
+
+      // 乐观更新：立即把新评论加到卡片上，不需要刷新就能看到
+      var oldPost = this.data.post;
+      var isAuthorComment = this.data.isMine;
+      var nick = isAuthorComment ? (oldPost.author && oldPost.author.nickName || '我') : (this.data.myNickName || '我');
+      var avatar = isAuthorComment ? this.data.authorAvatarUrl : (this.data.myAvatarUrl || '');
+      var newComment = {
+        _id: 'temp_' + Date.now(),
+        content: content,
+        createdAt: new Date().toISOString(),
+        isAuthor: isAuthorComment,
+        fromUser: {
+          nickName: nick,
+          avatarUrl: avatar
+        },
+        _optimistic: true
+      };
+      var newPost = {};
+      for (var k in oldPost) { newPost[k] = oldPost[k]; }
+      newPost.comments = [newComment].concat(oldPost.comments || []);
+      this.setData({ post: newPost });
+    },
+
+    previewImage(event) {
+      var urls = event.currentTarget.dataset.urls;
+      var index = event.currentTarget.dataset.index;
+      if (urls && urls.length) {
+        wx.previewImage({
+          current: urls[index] || urls[0],
+          urls: urls
+        });
+      }
+    },
+
+    commentTime(ts) {
+      return shortTime(ts);
     },
 
     openReport() {

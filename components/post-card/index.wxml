@@ -1,153 +1,106 @@
 <view class="card" wx:if="{{post}}">
-  <view class="tape"></view>
-  <block wx:if="{{post.imageUrls && post.imageUrls.length}}">
-    <view class="hero">
-      <image class="hero-image" mode="aspectFill" src="{{post.imageUrls[0]}}" />
-      <view class="hero-overlay"></view>
-      <view wx:if="{{!isMine}}" class="report report-hero" catchtap="openReport" aria-label="举报或不感兴趣">
-        <image class="report-icon report-icon-hero" src="/icons/hand.svg" mode="aspectFit" />
+  <!-- 头部：头像 + 名字 + 时间 + 举报 -->
+  <view class="card-header">
+    <view class="header-left">
+      <view class="avatar {{!isMine && !isFriend ? 'avatar-anon' : ''}}">
+        <image wx:if="{{(isMine || isFriend) && authorAvatarUrl}}" src="{{authorAvatarUrl}}" mode="aspectFill" />
+        <text wx:elif="{{!isMine && !isFriend}}" class="avatar-emoji">{{post.icon || '💡'}}</text>
+        <text wx:else>{{avatarText}}</text>
       </view>
-      <view class="identity identity-hero">
-        <view class="avatar avatar-hero {{!isMine && !isFriend ? 'avatar-emoji-wrap' : ''}}">
-          <image wx:if="{{(isMine || isFriend) && authorAvatarUrl}}" src="{{authorAvatarUrl}}" mode="aspectFill" />
-          <text wx:elif="{{!isMine && !isFriend}}" class="avatar-emoji">{{post.icon || '💡'}}</text>
-          <text wx:else>{{avatarText}}</text>
+      <view class="header-info">
+        <view class="header-name-row">
+          <text class="header-name">{{displayName}}</text>
+          <text wx:if="{{likedMe && !matched}}" class="badge badge-liked">点亮过你</text>
+          <text wx:elif="{{matched}}" class="badge badge-matched">已配对</text>
         </view>
-        <view class="meta-text">
-          <view class="name name-hero">
-            {{displayName}}
-            <text wx:if="{{likedMe && !matched}}" class="liked-me-badge">点亮过你</text>
-            <text wx:elif="{{likedByMe && !likedMe && !matched}}" class="liked-me-badge">点亮过ta</text>
-            <text wx:elif="{{!likedMe && !matched && !isMine}}" class="not-liked-badge">未点亮</text>
-          </view>
-          <view wx:if="{{!isMine}}" class="sub sub-hero">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
+        <text class="header-time">{{timeText}} · {{post.distanceText || '距离未知'}}</text>
+      </view>
+    </view>
+    <view wx:if="{{!isMine}}" class="report-btn" catchtap="openReport">
+      <image class="report-icon" src="/icons/hand.svg" mode="aspectFit" />
+    </view>
+  </view>
+
+  <!-- 正文 -->
+  <view class="card-body">
+    <text wx:if="{{post.title}}" class="post-title">{{post.title}}</text>
+    <text class="post-text">{{post.body}}</text>
+  </view>
+
+  <!-- 图片：朋友圈式排版 -->
+  <view wx:if="{{post.imageUrls && post.imageUrls.length}}" class="images-grid images-{{imageLayout}}">
+    <image
+      wx:for="{{post.imageUrls}}"
+      wx:for-index="idx"
+      wx:key="*this"
+      class="grid-image"
+      mode="aspectFill"
+      src="{{item}}"
+      data-urls="{{post.imageUrls}}"
+      data-index="{{idx}}"
+      catchtap="previewImage"
+    />
+  </view>
+
+  <!-- 评论/回复列表 -->
+  <view wx:if="{{post.comments && post.comments.length}}" class="comments-section">
+    <view wx:for="{{post.comments}}" wx:key="_id" class="comment-row">
+      <view class="comment-avatar {{!item.fromUser ? 'anon' : ''}}">
+        <image wx:if="{{item.fromUser && item.fromUser.avatarUrl}}" src="{{item.fromUser.avatarUrl}}" mode="aspectFill" />
+        <text wx:else>匿</text>
+      </view>
+      <view class="comment-content">
+        <view class="comment-name-row">
+          <text class="comment-name">{{item.fromUser ? item.fromUser.nickName : '匿名同学'}}</text>
+          <text wx:if="{{item.isAuthor}}" class="comment-author-tag">作者</text>
+        </view>
+        <text class="comment-text">{{item.content}}</text>
+      </view>
+      <text class="comment-time">{{item.createdAt ? commentTime(item.createdAt) : ''}}</text>
+    </view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="card-footer">
+    <!-- 自己的帖子：显示统计 -->
+    <view wx:if="{{isMine}}" class="footer-mine">
+      <view class="mine-stat">
+        <image class="mine-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
+        <text>{{post.likeCount || 0}} 点亮</text>
+      </view>
+      <view class="mine-stat">
+        <image class="mine-icon" src="/icons/chat-1-line.svg" mode="aspectFit" />
+        <text>{{post.commentCount || 0}} 回复</text>
+      </view>
+    </view>
+
+    <!-- 已配对：回复栏 -->
+    <view wx:elif="{{matched}}" class="footer-matched">
+      <view class="like-btn liked" catchtap="noop">
+        <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
+      </view>
+      <view class="reply-area">
+        <input class="reply-input" value="{{draft}}" placeholder="说点什么…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
+        <view class="send-btn" catchtap="send">
+          <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
         </view>
       </view>
     </view>
 
-    <view class="body body-floating">
-      <view class="content">
-        <text class="body-text">{{post.body}}</text>
-        <scroll-view wx:if="{{post.imageUrls.length > 1}}" scroll-x class="images">
-          <image wx:for="{{post.imageUrls}}" wx:key="*this" class="image" mode="aspectFill" src="{{item}}" />
-        </scroll-view>
+    <!-- 已点亮但未配对 -->
+    <view wx:elif="{{liked}}" class="footer-liked">
+      <view class="like-btn liked {{bulbLit ? 'glow' : ''}}" catchtap="noop">
+        <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
       </view>
-
-      <view class="footer">
-        <view wx:if="{{isMine}}" class="footer-mine">
-          <view class="mine-stats">
-            <text class="mine-stat-icon">💡</text>
-            <text class="mine-stat-count">{{post.likeCount || 0}} 人点亮</text>
-          </view>
-          <text class="mine-stat-label">{{post.commentCount || 0}} 条私密回复</text>
-        </view>
-        <view wx:elif="{{matched}}" class="matched-row">
-          <view class="icon-btn like-btn liked">
-            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
-          </view>
-          <view class="reply-area">
-            <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
-            <view class="icon-btn send-btn" catchtap="send" aria-label="发送">
-              <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
-            </view>
-          </view>
-        </view>
-        <view wx:elif="{{liked}}" class="footer-liked">
-          <view class="like-status liked {{bulbLit ? 'glow' : ''}}">
-            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
-          </view>
-          <text class="wait-text">已点亮</text>
-        </view>
-        <view wx:else class="footer-default">
-          <view class="icon-btn like-btn {{bulbLit ? 'glow' : ''}}" hover-class="like-btn-active" catchtap="like" aria-label="点亮">
-            <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
-          </view>
-          <text class="default-bulb-label">{{likedMe ? '回点TA' : '点亮'}}</text>
-        </view>
-      </view>
-
-      <view wx:if="{{isMine && comments.length}}" class="mine-comments">
-        <view wx:for="{{comments}}" wx:key="_id" class="mine-comment">
-          <view class="mine-comment-avatar">{{item.fromUser && item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '匿'}}</view>
-          <view class="mine-comment-right">
-            <view class="mine-comment-name">{{item.fromUser ? (item.fromUser.nickName || '好友') : '好友'}}</view>
-            <text class="mine-comment-body">{{item.content}}</text>
-          </view>
-        </view>
-      </view>
+      <text class="footer-label">已点亮</text>
     </view>
-  </block>
 
-  <block wx:else>
-    <view class="body">
-      <view class="meta">
-        <view class="identity">
-          <view class="avatar {{!isMine && !isFriend ? 'avatar-emoji-wrap' : ''}}">
-            <image wx:if="{{isMine && authorAvatarUrl}}" src="{{authorAvatarUrl}}" mode="aspectFill" />
-            <text wx:elif="{{!isMine && !isFriend}}" class="avatar-emoji">{{post.icon || '💡'}}</text>
-            <text wx:else>{{avatarText}}</text>
-          </view>
-          <view class="meta-text">
-            <view class="name">
-            {{displayName}}
-            <text wx:if="{{likedMe && !matched}}" class="liked-me-badge">点亮过你</text>
-            <text wx:elif="{{likedByMe && !likedMe && !matched}}" class="liked-me-badge">点亮过ta</text>
-            <text wx:elif="{{!likedMe && !matched && !isMine}}" class="not-liked-badge">未点亮</text>
-          </view>
-            <view wx:if="{{!isMine}}" class="sub">{{timeText}} · {{post.distanceText || '距离未知'}} · {{post.universityName || '未知学校'}}</view>
-          </view>
-        </view>
-        <view wx:if="{{!isMine}}" class="report" catchtap="openReport" aria-label="举报或不感兴趣">
-          <image class="report-icon" src="/icons/hand.svg" mode="aspectFit" />
-        </view>
+    <!-- 未点亮：点亮按钮 -->
+    <view wx:else class="footer-default">
+      <view class="like-btn {{bulbLit ? 'glow' : ''}}" catchtap="like">
+        <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
       </view>
-
-      <view class="content">
-        <text class="body-text">{{post.body}}</text>
-      </view>
-
-      <view class="footer">
-        <view wx:if="{{isMine}}" class="footer-mine">
-          <view class="mine-stats">
-            <text class="mine-stat-icon">💡</text>
-            <text class="mine-stat-count">{{post.likeCount || 0}} 人点亮</text>
-          </view>
-          <text class="mine-stat-label">{{post.commentCount || 0}} 条私密回复</text>
-        </view>
-        <view wx:elif="{{matched}}" class="matched-row">
-          <view class="icon-btn like-btn liked">
-            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
-          </view>
-          <view class="reply-area">
-            <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
-            <view class="icon-btn send-btn" catchtap="send" aria-label="发送">
-              <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
-            </view>
-          </view>
-        </view>
-        <view wx:elif="{{liked}}" class="footer-liked">
-          <view class="like-status liked {{bulbLit ? 'glow' : ''}}">
-            <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
-          </view>
-          <text class="wait-text">已点亮</text>
-        </view>
-        <view wx:else class="footer-default">
-          <view class="icon-btn like-btn {{bulbLit ? 'glow' : ''}}" hover-class="like-btn-active" catchtap="like" aria-label="点亮">
-            <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
-          </view>
-          <text class="default-bulb-label">{{likedMe ? '回点TA' : '点亮'}}</text>
-        </view>
-      </view>
-
-      <view wx:if="{{isMine && comments.length}}" class="mine-comments">
-        <view wx:for="{{comments}}" wx:key="_id" class="mine-comment">
-          <view class="mine-comment-avatar">{{item.fromUser && item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '匿'}}</view>
-          <view class="mine-comment-right">
-            <view class="mine-comment-name">{{item.fromUser ? (item.fromUser.nickName || '好友') : '好友'}}</view>
-            <text class="mine-comment-body">{{item.content}}</text>
-          </view>
-        </view>
-      </view>
+      <text class="footer-label">{{likedMe ? '回点TA' : '点亮'}}</text>
     </view>
-  </block>
+  </view>
 </view>

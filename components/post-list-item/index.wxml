@@ -7,7 +7,7 @@
     </view>
     <view class="meta-row">
       <text class="time">{{timeText}}</text>
-      <view class="meta-stats">
+      <view wx:if="{{showStats}}" class="meta-stats">
         <view class="meta-stat">
           <image class="meta-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
           <text class="meta-num">{{post.likeCount || 0}}</text>

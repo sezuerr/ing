@@ -7,21 +7,15 @@
   <!-- 自己的帖子：干净布局 -->
   <block wx:if="{{isMine}}">
     <view class="mine-detail">
-      <view class="mine-header">
-        <view class="mine-avatar">
-          <image wx:if="{{authorAvatar}}" src="{{authorAvatar}}" mode="aspectFill" />
-          <text wx:else class="mine-avatar-text">{{avatarText}}</text>
-        </view>
-        <text class="mine-nickname">{{authorName}}</text>
-      </view>
-
       <view class="mine-content-card">
-        <view class="title-row">
-          <view class="topic-badge">
-            <text class="topic-badge-icon">{{post.icon || '💡'}}</text>
+        <view class="mine-card-header">
+          <view class="mine-avatar">
+            <image wx:if="{{authorAvatar}}" src="{{authorAvatar}}" mode="aspectFill" />
+            <text wx:else class="mine-avatar-text">{{avatarText}}</text>
           </view>
-          <text class="mine-title">{{post.title}}</text>
+          <text class="mine-nickname">{{authorName}}</text>
         </view>
+
         <text class="mine-body">{{post.body}}</text>
         <scroll-view wx:if="{{post.imageUrls && post.imageUrls.length > 1}}" scroll-x class="images">
           <image wx:for="{{post.imageUrls}}" wx:key="*this" class="image" mode="aspectFill" src="{{item}}" />
@@ -84,8 +78,9 @@
         post="{{post}}"
         comments="{{comments}}"
         currentUserId="{{currentUserId}}"
+        myNickName="{{myNickName}}"
+        myAvatarUrl="{{myAvatarUrl}}"
         bind:like="onLike"
-        bind:match="onMatch"
         bind:reply="onReply"
         bind:gochat="onGoChat"
         bind:report="onReport"

@@ -132,20 +132,76 @@ async function getDiscoverFeed(openid, payload) {
     status: "visible"
   }).orderBy("createdAt", "desc").limit(100).get();
 
-  const enriched = [];
-  for (const post of postsResult.data) {
-    if (post.authorId === openid) continue;
-    if (excludedIds.includes(post._id)) continue;
-    if (!canSeePost(post, user, friendIds)) continue;
-    if (!applyScope(post, user, scope, friendIds)) continue;
-    if (payload.topicOnly && !post.dailyTopicId) continue;
+  // 先收集所有候选帖子的作者 ID，批量查询"我是否点赞过他们"
+  const candidatePosts = postsResult.data.filter(post => {
+    if (post.authorId === openid) return false;
+    if (excludedIds.includes(post._id)) return false;
+    if (!canSeePost(post, user, friendIds)) return false;
+    if (!applyScope(post, user, scope, friendIds)) return false;
+    if (payload.topicOnly && !post.dailyTopicId) return false;
+    return true;
+  });
+  const authorIds = [...new Set(candidatePosts.map(p => p.authorId))];
 
+  // 批量查：我点赞过哪些作者（likedByMe）
+  const myLikes = authorIds.length > 0
+    ? (await db.collection(C.likes).where({
+        fromUserId: openid,
+        toUserId: _.in(authorIds)
+      }).limit(200).get()).data
+    : [];
+  const likedAuthorIds = new Set(myLikes.map(l => l.toUserId));
+
+  // 批量查：哪些作者点赞过我（likedMe）
+  const likesToMe = authorIds.length > 0
+    ? (await db.collection(C.likes).where({
+        fromUserId: _.in(authorIds),
+        toUserId: openid
+      }).limit(200).get()).data
+    : [];
+  const likedMeAuthorIds = new Set(likesToMe.map(l => l.fromUserId));
+
+  // 批量查：所有候选帖子的评论（每个帖子最多取 3 条）
+  const postIds = candidatePosts.map(p => p._id);
+  const commentsResult = postIds.length > 0
+    ? (await db.collection(C.comments).where({
+        postId: _.in(postIds)
+      }).orderBy("createdAt", "desc").limit(200).get()).data
+    : [];
+  const commentsByPost = {};
+  for (const c of commentsResult) {
+    if (!commentsByPost[c.postId]) commentsByPost[c.postId] = [];
+    if (commentsByPost[c.postId].length < 3) {
+      commentsByPost[c.postId].push(c);
+    }
+  }
+
+  const enriched = [];
+  for (const post of candidatePosts) {
     const author = await getUserByOpenId(post.authorId);
     const isFriend = friendIds.includes(post.authorId);
-    const authorLikesMe = await db.collection(C.likes).where({
-      fromUserId: post.authorId,
-      toUserId: openid
-    }).limit(1).get();
+    const likedMe = likedMeAuthorIds.has(post.authorId);
+    const likedByMe = likedAuthorIds.has(post.authorId);
+    const postComments = (commentsByPost[post._id] || []).slice(0, 3);
+
+    // 评论者信息脱敏：仅好友（已配对）可见真实信息
+    const visibleComments = [];
+    for (const c of postComments) {
+      const commenterIsMe = c.fromUserId === openid;
+      const commenterIsFriend = friendIds.includes(c.fromUserId);
+      const shouldReveal = commenterIsMe || commenterIsFriend || c.fromUserId === post.authorId;
+      const commenter = shouldReveal ? await getUserByOpenId(c.fromUserId) : null;
+      visibleComments.push({
+        _id: c._id,
+        content: c.content,
+        createdAt: c.createdAt,
+        isAuthor: c.fromUserId === post.authorId,
+        fromUser: shouldReveal && commenter ? {
+          nickName: commenter.nickName,
+          avatarUrl: commenter.avatarUrl
+        } : null
+      });
+    }
 
     enriched.push({
       ...post,
@@ -155,7 +211,10 @@ async function getDiscoverFeed(openid, payload) {
         isFriend: true
       } : { isFriend: false },
       mutualFriendCount: isFriend ? 1 : 0,
-      likedMe: Boolean(authorLikesMe.data.length),
+      likedMe,
+      likedByMe,
+      matched: isFriend,
+      comments: visibleComments,
       distanceText: post.distanceText || "距你10公里内"
     });
   }
@@ -258,10 +317,21 @@ async function likePost(openid, payload) {
   const postResult = await db.collection(C.posts).doc(postId).get();
   const post = postResult.data;
   if (!post || post.authorId === openid) return fail("不能点亮自己的帖子");
+  if (post.status !== "visible") return fail("帖子已失效", "NOT_FOUND");
 
+  // 检查是否已点赞该帖子（幂等保护）
   const duplicate = await db.collection(C.likes).where({ postId, fromUserId: openid }).limit(1).get();
-  if (duplicate.data.length) return ok({ matched: false, duplicate: true });
+  if (duplicate.data.length) {
+    // 虽是重复请求，但仍检查是否已有配对，返回正确状态给前端
+    const existingMatch = await activeMatch(openid, post.authorId);
+    if (existingMatch) {
+      const conv = await db.collection(C.conversations).where({ matchId: existingMatch._id }).limit(1).get();
+      return ok({ matched: true, duplicate: true, matchId: existingMatch._id, conversationId: conv.data[0] ? conv.data[0]._id : null });
+    }
+    return ok({ matched: false, duplicate: true });
+  }
 
+  // 1. 写入点赞记录
   await db.collection(C.likes).add({
     data: {
       postId,
@@ -270,41 +340,69 @@ async function likePost(openid, payload) {
       createdAt: now()
     }
   });
-  await db.collection(C.posts).doc(postId).update({ data: { likeCount: _.inc(1) } });
-  await db.collection(C.users).where({ openid: post.authorId }).update({ data: { "stats.likeCount": _.inc(1) } });
-  await createNotification({
-    recipientId: post.authorId,
-    type: "like",
-    actorId: openid,
-    postId,
-    title: "收到一个点亮",
-    description: `有人点亮了你的帖子「${post.title}」。`
-  });
 
+  // 2. 更新帖子与用户计数（允许部分失败，不影响核心流程）
+  try {
+    await db.collection(C.posts).doc(postId).update({ data: { likeCount: _.inc(1) } });
+    await db.collection(C.users).where({ openid: post.authorId }).update({ data: { "stats.likeCount": _.inc(1) } });
+  } catch (e) {
+    console.warn("更新计数失败（非关键）", e);
+  }
+
+  // 3. 通知帖子作者
+  try {
+    await createNotification({
+      recipientId: post.authorId,
+      type: "like",
+      actorId: openid,
+      postId,
+      title: "收到一个点亮",
+      description: `有人点亮了你的帖子「${(post.body || "无内容").slice(0, 20)}」。`
+    });
+  } catch (e) {
+    console.warn("创建点赞通知失败（非关键）", e);
+  }
+
+  // 4. 检查是否互亮（对方是否已点亮过我）
   const reciprocal = await db.collection(C.likes).where({
     fromUserId: post.authorId,
     toUserId: openid
   }).limit(1).get();
-  if (!reciprocal.data.length) return ok({ matched: false });
 
-  await createOrGetMatch(openid, post.authorId);
-  await createNotification({
-    recipientId: post.authorId,
-    type: "match",
-    actorId: openid,
-    postId,
-    title: "配对成功",
-    description: "你们互相点亮了，可以开始聊天。"
-  });
-  await createNotification({
-    recipientId: openid,
-    type: "match",
-    actorId: post.authorId,
-    postId,
-    title: "配对成功",
-    description: "你们互相点亮了，可以开始聊天。"
-  });
-  return ok({ matched: true });
+  if (!reciprocal.data.length) {
+    return ok({ matched: false });
+  }
+
+  // 5. 互亮 → 创建或恢复配对
+  const match = await createOrGetMatch(openid, post.authorId);
+
+  // 6. 查找对应的会话 ID
+  const convResult = await db.collection(C.conversations).where({ matchId: match._id }).limit(1).get();
+  const conversationId = convResult.data[0] ? convResult.data[0]._id : null;
+
+  // 7. 通知双方配对成功
+  try {
+    await createNotification({
+      recipientId: post.authorId,
+      type: "match",
+      actorId: openid,
+      postId,
+      title: "配对成功",
+      description: "你们互相点亮了，可以开始聊天。"
+    });
+    await createNotification({
+      recipientId: openid,
+      type: "match",
+      actorId: post.authorId,
+      postId,
+      title: "配对成功",
+      description: "你们互相点亮了，可以开始聊天。"
+    });
+  } catch (e) {
+    console.warn("创建配对通知失败（非关键）", e);
+  }
+
+  return ok({ matched: true, matchId: match._id, conversationId });
 }
 
 async function sendPrivateReply(openid, payload) {
@@ -536,27 +634,88 @@ async function getMyPosts(openid) {
 async function getPostDetail(openid, payload) {
   const post = (await db.collection(C.posts).doc(payload.postId).get()).data;
   if (!post) return fail("帖子不存在", "NOT_FOUND");
-  if (post.authorId !== openid) {
-    const match = await activeMatch(openid, post.authorId);
-    if (!match) return fail("无权查看评论明细", "FORBIDDEN");
+
+  // 自己的帖子：直接返回
+  if (post.authorId === openid) {
+    const comments = await db.collection(C.comments)
+      .where({ postId: payload.postId })
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
+    const enrichedComments = [];
+    for (const comment of comments.data) {
+      const fromUser = await getUserByOpenId(comment.fromUserId);
+      enrichedComments.push({
+        ...comment,
+        fromUser: fromUser ? {
+          nickName: fromUser.nickName,
+          avatarUrl: fromUser.avatarUrl
+        } : { nickName: "好友", avatarUrl: "" }
+      });
+    }
+    return ok({ post, comments: enrichedComments });
   }
+
+  // 别人的帖子：需配对才能查看
+  const match = await activeMatch(openid, post.authorId);
+  if (!match) return fail("无权查看评论明细", "FORBIDDEN");
+
+  // 补齐匹配状态，保证 post-card 组件渲染与发现页一致
+  const author = await getUserByOpenId(post.authorId);
+  const likedMe = await db.collection(C.likes).where({
+    fromUserId: post.authorId,
+    toUserId: openid
+  }).limit(1).get();
+  const likedByMe = await db.collection(C.likes).where({
+    fromUserId: openid,
+    toUserId: post.authorId
+  }).limit(1).get();
+
+  // 查询评论
   const comments = await db.collection(C.comments)
     .where({ postId: payload.postId })
     .orderBy("createdAt", "desc")
     .limit(100)
     .get();
-  const enrichedComments = [];
-  for (const comment of comments.data) {
-    const fromUser = await getUserByOpenId(comment.fromUserId);
-    enrichedComments.push({
-      ...comment,
-      fromUser: fromUser ? {
-        nickName: fromUser.nickName,
-        avatarUrl: fromUser.avatarUrl
-      } : { nickName: "好友", avatarUrl: "" }
+
+  // 收集所有评论者 ID
+  const commenterIds = [...new Set(comments.data.map(c => c.fromUserId))];
+  const friendIdSet = new Set(await getFriendIds(openid));
+
+  // 格式化评论（与 getDiscoverFeed 一致）
+  const visibleComments = [];
+  for (const c of comments.data) {
+    const commenterIsMe = c.fromUserId === openid;
+    const commenterIsFriend = friendIdSet.has(c.fromUserId) || c.fromUserId === post.authorId;
+    const shouldReveal = commenterIsMe || commenterIsFriend;
+    const commenter = shouldReveal ? await getUserByOpenId(c.fromUserId) : null;
+    visibleComments.push({
+      _id: c._id,
+      content: c.content,
+      createdAt: c.createdAt,
+      isAuthor: c.fromUserId === post.authorId,
+      fromUser: shouldReveal && commenter ? {
+        nickName: commenter.nickName,
+        avatarUrl: commenter.avatarUrl
+      } : null
     });
   }
-  return ok({ post, comments: enrichedComments });
+
+  const enrichedPost = {
+    ...post,
+    author: {
+      nickName: author ? author.nickName : "好友",
+      avatarUrl: author ? author.avatarUrl : "",
+      isFriend: true
+    },
+    mutualFriendCount: 1,
+    likedMe: Boolean(likedMe.data.length),
+    likedByMe: Boolean(likedByMe.data.length),
+    matched: true,
+    comments: visibleComments
+  };
+
+  return ok({ post: enrichedPost, comments: visibleComments });
 }
 
 async function getPostLikers(openid, payload) {
@@ -579,7 +738,7 @@ async function getPostLikers(openid, payload) {
       _id: like._id,
       postId: like.postId,
       fromUser: {
-        _id: user ? user._id : "",
+        _id: like.fromUserId,
         nickName: isFriend && user ? (user.nickName || "") : "",
         avatarUrl: isFriend && user ? (user.avatarUrl || "") : "",
         isFriend: isFriend

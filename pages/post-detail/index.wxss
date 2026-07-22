@@ -33,51 +33,48 @@
   padding: 0 28rpx;
 }
 
-.mine-header {
+.mine-content-card {
+  padding: 28rpx;
+  border-radius: 20rpx;
+  background: #ffffff;
+  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.mine-card-header {
   display: flex;
   align-items: center;
   gap: 20rpx;
-  padding: 20rpx 0 28rpx;
+  padding-bottom: 20rpx;
 }
 
 .mine-avatar {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #15130d, #342e22);
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 999rpx;
+  background: #f2f1ec;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  flex: 0 0 auto;
 }
 
 .mine-avatar image {
   width: 100%;
   height: 100%;
-  border-radius: 50%;
+  border-radius: 999rpx;
 }
 
 .mine-avatar-text {
-  font-size: 42rpx;
+  font-size: 34rpx;
   font-weight: 900;
-  color: #ffd84d;
-}
-
-.mine-nickname {
-  font-size: 38rpx;
-  font-weight: 800;
   color: #15130d;
 }
 
-.mine-content-card {
-  padding: 28rpx;
-  border-radius: 6rpx 32rpx 6rpx 32rpx;
-  background: linear-gradient(170deg, #fffef8 0%, #fff9e5 35%, #fff3d4 100%);
-  box-shadow:
-    3rpx 4rpx 0 rgba(200, 160, 40, 0.1),
-    6rpx 8rpx 18rpx rgba(0, 0, 0, 0.04),
-    8rpx 12rpx 36rpx rgba(53, 42, 14, 0.06);
-  border: 1rpx solid rgba(235, 210, 140, 0.3);
+.mine-nickname {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #15130d;
 }
 
 .title-row {

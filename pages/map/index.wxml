@@ -21,7 +21,12 @@
       <post-card
         post="{{popoverData.post}}"
         currentUserId="{{currentUserId}}"
+        myNickName="{{myNickName}}"
+        myAvatarUrl="{{myAvatarUrl}}"
         bind:like="onPopoverLike"
+        bind:reply="onPopoverReply"
+        bind:gochat="onPopoverGoChat"
+        bind:report="onPopoverReport"
       />
     </view>
   </view>
