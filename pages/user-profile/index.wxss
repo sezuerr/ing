@@ -3,7 +3,7 @@
   min-height: 100vh;
   box-sizing: border-box;
   background: var(--color-surface);
-  padding: calc(140rpx + env(safe-area-inset-top)) 28rpx 0;
+  padding: calc(100rpx + env(safe-area-inset-top)) 28rpx 0;
 }
 
 /* ── 返回按钮 ── */

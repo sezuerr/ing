@@ -35,6 +35,22 @@ Page({
       profileUserId: userId,
       avatarText: (user.nickName || "同学").slice(0, 1).toUpperCase()
     });
+
+    // 兜底：云函数本应返回 https，但若线上部署较旧或解析失败会漏出 cloud://，
+    // 这里客户端再解析一次，避免依赖 <image> 原生 cloud:// 解析（冷启动会 500）。
+    if (user.avatarUrl && user.avatarUrl.indexOf("cloud://") === 0) {
+      const that = this;
+      api.resolveImageUrls([user.avatarUrl]).then(function(r) {
+        if (r && r[0] && r[0] !== user.avatarUrl) {
+          that.setData({ "user.avatarUrl": r[0] });
+        }
+      }).catch(function() {});
+    }
+  },
+
+  // 头像加载失败时回退到首字占位
+  onAvatarError() {
+    this.setData({ "user.avatarUrl": "" });
   },
 
   onBackTap() {

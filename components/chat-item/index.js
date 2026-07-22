@@ -62,6 +62,11 @@ Component({
     unmatch() {
       this.setData({ offset: 0 });
       this.triggerEvent("unmatch", { item: this.data.item });
+    },
+
+    // 头像加载失败（临时链接过期等）回退到首字占位
+    onAvatarError() {
+      this.setData({ avatarUrl: "" });
     }
   }
 });

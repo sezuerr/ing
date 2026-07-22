@@ -10,7 +10,7 @@
     <!-- 头像区 -->
     <view class="avatar-wrap">
       <view class="avatar">
-        <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
+        <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" binderror="onAvatarError" />
         <text wx:else class="avatar-placeholder">{{avatarText}}</text>
       </view>
     </view>

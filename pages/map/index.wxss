@@ -7,7 +7,7 @@
 
 .map-page .top-logo {
   position: absolute;
-  top: calc(128rpx + env(safe-area-inset-top));
+  top: calc(88rpx + env(safe-area-inset-top));
   left: 28rpx;
   z-index: 10;
   margin-bottom: 0;

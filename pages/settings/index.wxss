@@ -1,6 +1,6 @@
 .settings-page {
   background: #f2f1ec;
-  padding-top: calc(120rpx + env(safe-area-inset-top));
+  padding-top: calc(80rpx + env(safe-area-inset-top));
 }
 
 /* 返回按钮 */

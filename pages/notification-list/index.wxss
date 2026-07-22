@@ -1,5 +1,5 @@
 .notification-list-page {
-  padding-top: calc(120rpx + env(safe-area-inset-top));
+  padding-top: calc(80rpx + env(safe-area-inset-top));
 }
 
 .back-row {

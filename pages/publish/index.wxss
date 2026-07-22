@@ -1,6 +1,6 @@
 /* ── 页面容器 ── */
 .publish-page {
-  padding: calc(100rpx + env(safe-area-inset-top)) 28rpx calc(160rpx + env(safe-area-inset-bottom));
+  padding: calc(60rpx + env(safe-area-inset-top)) 28rpx calc(160rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 

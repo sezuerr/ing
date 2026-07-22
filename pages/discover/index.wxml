@@ -1,6 +1,6 @@
 <wxs module="swipe" src="./swipe.wxs"></wxs>
 <view class="page discover-page">
-  <view class="discover-top" style="padding-top: {{statusBarHeight - 30}}px;">
+  <view class="discover-top" style="padding-top: {{statusBarHeight - 45}}px;">
     <image class="top-logo" src="/icons/ing_logo.png" mode="aspectFit" />
     <view class="top-bar">
       <view class="scope-toggle-row">

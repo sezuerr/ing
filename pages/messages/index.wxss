@@ -2,7 +2,7 @@
   min-height: 100vh;
   box-sizing: border-box;
   background: var(--color-surface);
-  padding: calc(140rpx + env(safe-area-inset-top)) 28rpx calc(148rpx + env(safe-area-inset-bottom));
+  padding: calc(100rpx + env(safe-area-inset-top)) 28rpx calc(148rpx + env(safe-area-inset-bottom));
 }
 
 .quick-row {

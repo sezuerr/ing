@@ -9,7 +9,7 @@
     bindtap="open"
   >
     <view class="avatar">
-      <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" />
+      <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" binderror="onAvatarError" />
       <text wx:else>{{avatarText}}</text>
     </view>
     <view class="body">
