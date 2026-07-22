@@ -295,54 +295,105 @@ async function checkContentSafety(openid, payload) {
   const body = String(payload.body || "").trim();
   const imageUrls = Array.isArray(payload.imageUrls) ? payload.imageUrls.filter(Boolean) : [];
 
-  // 1. 文本安全检测（同步，校验失败直接阻断）
+  // 1. 文本安全检测（同步，校验失败直接阻断；审核接口异常也阻断，避免内容未经审核直接发布）
   if (body) {
     try {
       const textResult = await cloud.openapi.security.msgSecCheck({
         content: body,
+        version: 2,
+        scene: 1,
         openid: openid
       });
-      if (textResult && textResult.result && textResult.result.suggest === "risky") {
+      console.log("[内容审核] msgSecCheck 原始返回:", JSON.stringify(textResult));
+
+      // 多路径提取 suggest（兼容不同 SDK 版本和 v1/v2 返回格式）
+      const suggest = (textResult && textResult.result && textResult.result.suggest)
+        || (textResult && textResult.suggest)
+        || "";
+      const label = (textResult && textResult.result && textResult.result.label)
+        || (textResult && textResult.label)
+        || 0;
+      const traceId = (textResult && textResult.trace_id)
+        || (textResult && textResult.traceId)
+        || "";
+
+      // 没有 trace_id 也没有 suggest → v1 接口或 SDK 返回异常，检查 errCode
+      if (!traceId && !suggest) {
+        const errCode = (textResult && textResult.errCode) || (textResult && textResult.errcode) || 0;
+        if (errCode !== 0) {
+          console.warn("[内容审核] msgSecCheck 返回错误码:", errCode);
+          return fail("安全审核服务暂不可用，请稍后重试", "CONTENT_CHECK_FAILED");
+        }
+        // errCode=0 但无 suggest → v1 接口，v1 只会在违规时抛异常（errCode 87014），
+        // 此处已走到 try 分支说明未被 SDK 抛异常，视为通过
+      }
+
+      // treat "review" (疑似违规) same as "risky"
+      if (suggest === "risky" || suggest === "review") {
+        console.log("[内容审核] 文本违规, suggest=" + suggest + ", label=" + label + ", traceId=" + traceId);
         return fail("内容包含违规信息，请修改", "CONTENT_RISKY");
       }
     } catch (error) {
-      // 安全降级：审核接口异常时放行，避免影响正常发布
-      console.warn("[内容审核] 文本审核接口异常，已放行:", error.message || error);
-    }
-  }
-
-  // 2. 图片安全检测（异步，仅触发检测，不阻塞流程；记录 trace_id 供回调匹配）
-  const mediaCheckTraces = [];
-  if (imageUrls.length) {
-    try {
-      const tempResult = await cloud.getTempFileURL({ fileList: imageUrls });
-      const urlMap = {};
-      (tempResult.fileList || []).forEach(item => {
-        if (item.tempFileURL) urlMap[item.fileID] = item.tempFileURL;
-      });
-
-      for (const fileId of imageUrls) {
-        const mediaUrl = urlMap[fileId];
-        if (!mediaUrl) continue;
-        try {
-          const checkResult = await cloud.openapi.security.mediaCheckAsync({
-            mediaUrl: mediaUrl,
-            mediaType: 2,
-            openid: openid
-          });
-          if (checkResult && checkResult.trace_id) {
-            mediaCheckTraces.push({ traceId: checkResult.trace_id, fileId });
-          }
-        } catch (e) {
-          console.warn("[内容审核] 图片审核异步提交失败:", e.message || e);
-        }
+      // msgSecCheck 在 v1 模式下对违规内容抛出 errCode=87014
+      if (error && (error.errCode === 87014 || error.err_code === 87014 || error.code === 87014)) {
+        console.log("[内容审核] 文本违规 (errCode=87014)");
+        return fail("内容包含违规信息，请修改", "CONTENT_RISKY");
       }
-    } catch (error) {
-      console.warn("[内容审核] 图片审核准备阶段异常，已放行:", error.message || error);
+      console.error("[内容审核] 文本审核接口异常，阻断发布:", error.message || error);
+      return fail("安全审核服务暂不可用，请稍后重试", "CONTENT_CHECK_FAILED");
     }
   }
 
-  return ok({ safe: true, mediaCheckTraces });
+  // 2. 图片安全检测（同步 imgSecCheck，代替异步 mediaCheckAsync，避免临时 URL 过期导致审核失效）
+  if (imageUrls.length) {
+    for (const fileId of imageUrls) {
+      try {
+        const downloadResult = await cloud.downloadFile({ fileID: fileId });
+        const buffer = downloadResult.fileContent;
+        if (!buffer || buffer.length === 0) {
+          console.error("[内容审核] 下载图片失败，内容为空:", fileId);
+          return fail("安全审核服务暂不可用，请稍后重试", "CONTENT_CHECK_FAILED");
+        }
+        const imgResult = await cloud.openapi.security.imgSecCheck({
+          media: { contentType: 'image/jpeg', value: buffer },
+          openid: openid,
+          scene: 1,
+          version: 2
+        });
+        console.log("[内容审核] imgSecCheck 原始返回:", JSON.stringify(imgResult));
+
+        const imgSuggest = (imgResult && imgResult.result && imgResult.result.suggest)
+          || (imgResult && imgResult.suggest)
+          || "";
+        const imgLabel = (imgResult && imgResult.result && imgResult.result.label)
+          || (imgResult && imgResult.label)
+          || 0;
+
+        // 无 suggest 字段 → v1 接口降级，检查 errCode
+        if (!imgSuggest) {
+          const imgErrCode = (imgResult && imgResult.errCode) || (imgResult && imgResult.errcode) || 0;
+          if (imgErrCode !== 0) {
+            console.warn("[内容审核] imgSecCheck 返回错误码:", imgErrCode);
+            return fail("安全审核服务暂不可用，请稍后重试", "CONTENT_CHECK_FAILED");
+          }
+        }
+
+        if (imgSuggest === "risky" || imgSuggest === "review") {
+          console.log("[内容审核] 图片违规, suggest=" + imgSuggest + ", label=" + imgLabel);
+          return fail("图片包含违规内容，请更换", "CONTENT_RISKY");
+        }
+      } catch (e) {
+        if (e && (e.errCode === 87014 || e.err_code === 87014 || e.code === 87014)) {
+          console.log("[内容审核] 图片违规 (errCode=87014)");
+          return fail("图片包含违规内容，请更换", "CONTENT_RISKY");
+        }
+        console.error("[内容审核] 图片审核失败，阻断发布:", e.message || e);
+        return fail("安全审核服务暂不可用，请稍后重试", "CONTENT_CHECK_FAILED");
+      }
+    }
+  }
+
+  return ok({ safe: true, mediaCheckTraces: [] });
 }
 // --- 新增：内容安全审核 END ---
 

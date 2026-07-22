@@ -70,7 +70,7 @@ function getDiscoverFeed(params) {
 
 // --- 新增：内容安全审核 START ---
 function checkContentSafety(payload) {
-  return callApi("checkContentSafety", payload, { safe: true });
+  return callApiWrite("checkContentSafety", payload);
 }
 // --- 新增：内容安全审核 END ---
 

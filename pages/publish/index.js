@@ -155,7 +155,9 @@ Page({
         wx.showToast({ title: "内容包含违规信息，请修改", icon: "none" });
         return;
       }
-      console.warn("[publish] 内容审核异常，已放行:", error);
+      console.error("[publish] 内容审核失败，阻断发布:", error);
+      wx.showToast({ title: (error && error.message) || "安全审核服务暂不可用，请稍后重试", icon: "none" });
+      return;
     }
     // --- 新增：内容安全审核 END ---
 
