@@ -235,6 +235,122 @@ async function getDiscoverFeed(openid, payload) {
   });
 }
 
+// --- 新增：内容安全审核 START ---
+async function checkContentSafety(openid, payload) {
+  const body = String(payload.body || "").trim();
+  const imageUrls = Array.isArray(payload.imageUrls) ? payload.imageUrls.filter(Boolean) : [];
+
+  // 1. 文本安全检测（同步，校验失败直接阻断）
+  if (body) {
+    try {
+      const textResult = await cloud.openapi.security.msgSecCheck({
+        content: body,
+        openid: openid
+      });
+      if (textResult && textResult.result && textResult.result.suggest === "risky") {
+        return fail("内容包含违规信息，请修改", "CONTENT_RISKY");
+      }
+    } catch (error) {
+      // 安全降级：审核接口异常时放行，避免影响正常发布
+      console.warn("[内容审核] 文本审核接口异常，已放行:", error.message || error);
+    }
+  }
+
+  // 2. 图片安全检测（异步，仅触发检测，不阻塞流程；记录 trace_id 供回调匹配）
+  const mediaCheckTraces = [];
+  if (imageUrls.length) {
+    try {
+      const tempResult = await cloud.getTempFileURL({ fileList: imageUrls });
+      const urlMap = {};
+      (tempResult.fileList || []).forEach(item => {
+        if (item.tempFileURL) urlMap[item.fileID] = item.tempFileURL;
+      });
+
+      for (const fileId of imageUrls) {
+        const mediaUrl = urlMap[fileId];
+        if (!mediaUrl) continue;
+        try {
+          const checkResult = await cloud.openapi.security.mediaCheckAsync({
+            mediaUrl: mediaUrl,
+            mediaType: 2,
+            openid: openid
+          });
+          if (checkResult && checkResult.trace_id) {
+            mediaCheckTraces.push({ traceId: checkResult.trace_id, fileId });
+          }
+        } catch (e) {
+          console.warn("[内容审核] 图片审核异步提交失败:", e.message || e);
+        }
+      }
+    } catch (error) {
+      console.warn("[内容审核] 图片审核准备阶段异常，已放行:", error.message || error);
+    }
+  }
+
+  return ok({ safe: true, mediaCheckTraces });
+}
+// --- 新增：内容安全审核 END ---
+
+// --- 新增：异步审核回调处理 START ---
+async function handleMediaCheckCallback(event) {
+  console.log("[内容审核回调] 收到微信回调:", JSON.stringify(event));
+
+  const traceId = event.trace_id;
+  const result = event.result || {};
+  const suggest = result.suggest || "";
+
+  if (!traceId) {
+    console.warn("[内容审核回调] 缺少 trace_id，忽略");
+    return;
+  }
+
+  if (suggest !== "risky") {
+    console.log("[内容审核回调] 审核通过, trace_id:", traceId, "suggest:", suggest);
+    return;
+  }
+
+  try {
+    const postResult = await db.collection(C.posts)
+      .where({ "mediaCheckTraces.traceId": traceId })
+      .limit(1)
+      .get();
+
+    if (!postResult.data.length) {
+      console.warn("[内容审核回调] 未找到匹配的帖子, trace_id:", traceId);
+      return;
+    }
+
+    const post = postResult.data[0];
+
+    await db.collection(C.posts).doc(post._id).update({
+      data: {
+        status: "blocked",
+        reviewStatus: "rejected",
+        reviewReason: "异步图片审核违规: " + suggest + " (label: " + (result.label || "未知") + ")",
+        updatedAt: now()
+      }
+    });
+
+    const fileIds = (post.mediaCheckTraces || [])
+      .filter(function(t) { return t.traceId === traceId; })
+      .map(function(t) { return t.fileId; });
+
+    if (fileIds.length) {
+      try {
+        await cloud.deleteFile({ fileList: fileIds });
+        console.log("[内容审核回调] 已删除违规图片:", fileIds);
+      } catch (e) {
+        console.warn("[内容审核回调] 删除图片失败:", e.message || e);
+      }
+    }
+
+    console.log("[内容审核回调] 已下架违规帖子:", post._id, "trace_id:", traceId);
+  } catch (error) {
+    console.error("[内容审核回调] 处理失败:", error);
+  }
+}
+// --- 新增：异步审核回调处理 END ---
+
 async function createPost(openid, payload) {
   const user = await ensureUser(openid);
   const title = String(payload.title || "").trim();
@@ -247,6 +363,9 @@ async function createPost(openid, payload) {
     body: body.slice(0, 800),
     icon: payload.icon || "💡",
     imageUrls: Array.isArray(payload.imageUrls) ? payload.imageUrls.slice(0, 9) : [],
+    // --- 新增：保存审核凭证 START ---
+    mediaCheckTraces: Array.isArray(payload.mediaCheckTraces) ? payload.mediaCheckTraces : [],
+    // --- 新增：保存审核凭证 END ---
     visibility: payload.visibility || "public",
     cityCode: payload.cityCode || user.cityCode,
     universityId: payload.universityId || user.universityId,
@@ -759,6 +878,7 @@ const handlers = {
   updateProfile,
   getDiscoverFeed,
   createPost,
+  checkContentSafety,
   likePost,
   sendPrivateReply,
   getNotifications,
@@ -777,6 +897,13 @@ const handlers = {
 };
 
 exports.main = async (event) => {
+  // --- 新增：内容审核回调处理 START ---
+  if (event && event.Event === "wxa_media_check") {
+    await handleMediaCheckCallback(event);
+    return { ok: true };
+  }
+  // --- 新增：内容审核回调处理 END ---
+
   const { OPENID } = cloud.getWXContext();
   const action = event.action;
   const payload = event.payload || {};

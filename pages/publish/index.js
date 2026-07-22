@@ -142,6 +142,23 @@ Page({
       return;
     }
 
+    // --- 新增：内容安全审核 START ---
+    let mediaCheckTraces = [];
+    try {
+      const safetyResult = await api.checkContentSafety({
+        body: form.body,
+        imageUrls: form.imageUrls
+      });
+      mediaCheckTraces = (safetyResult && safetyResult.mediaCheckTraces) || [];
+    } catch (error) {
+      if (error && error.code === "CONTENT_RISKY") {
+        wx.showToast({ title: "内容包含违规信息，请修改", icon: "none" });
+        return;
+      }
+      console.warn("[publish] 内容审核异常，已放行:", error);
+    }
+    // --- 新增：内容安全审核 END ---
+
     const app = getApp();
     const user = (await app.ensureLogin()) || app.globalData.currentUser || mock.currentUser;
     this.setData({ submitting: true });
@@ -151,7 +168,10 @@ Page({
         ...form,
         universityId: user.universityId,
         universityName: user.universityName,
-        cityCode: user.cityCode
+        cityCode: user.cityCode,
+        // --- 新增：传递审核凭证 START ---
+        mediaCheckTraces: mediaCheckTraces
+        // --- 新增：传递审核凭证 END ---
       };
 
       if (this.data.showLocation && this.data.location) {

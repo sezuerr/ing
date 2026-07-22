@@ -68,6 +68,12 @@ function getDiscoverFeed(params) {
   return callApi("getDiscoverFeed", params, { posts: mock.posts, dailyTopic: mock.dailyTopic });
 }
 
+// --- 新增：内容安全审核 START ---
+function checkContentSafety(payload) {
+  return callApi("checkContentSafety", payload, { safe: true });
+}
+// --- 新增：内容安全审核 END ---
+
 function createPost(post) {
   return callApi("createPost", post, { _id: `local_${Date.now()}`, ...post });
 }
@@ -167,6 +173,7 @@ module.exports = {
   loginAndSyncProfile,
   updateProfile,
   getDiscoverFeed,
+  checkContentSafety,
   createPost,
   likePost,
   sendPrivateReply,
