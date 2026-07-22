@@ -2,10 +2,6 @@ const { FEED_SCOPES, REPORT_REASONS, TOPIC_ICONS } = require("../../utils/consta
 const api = require("../../utils/cloud");
 const mock = require("../../utils/mock");
 
-function isWithin24h(ts) {
-  return (Date.now() - ts) < 24 * 60 * 60 * 1000;
-}
-
 /*
  * ========== 推荐逻辑（占位说明） ==========
  *
@@ -95,7 +91,7 @@ Page({
   switchScopeMode(event) {
     var mode = event.currentTarget.dataset.mode;
     if (mode === this.data.scopeMode) return;
-    this.setData({ scopeMode: mode });
+    this.setData({ scopeMode: mode, scope: mode });
     this.loadFeed();
   },
 
@@ -106,17 +102,11 @@ Page({
       topicIcon: this.data.topicIconValue
     });
     var posts = result.posts || [];
-    // 暂时注释掉 24h 时间过滤，排查数据问题
-    // var posts = (result.posts || []).filter(function(p) {
-    //   return isWithin24h(new Date(p.createdAt).getTime());
-    // });
-
-    // 去掉客户端硬编码的 universityId 过滤，云函数已通过 applyScope 做 scope 过滤
-    // if (this.data.scopeMode === "university") {
-    //   posts = posts.filter(function(p) {
-    //     return p.universityId === "ruc";
-    //   });
-    // }
+    var burnedIds = [];
+    try { burnedIds = wx.getStorageSync("burned_ids") || []; } catch (e) {}
+    if (burnedIds.length) {
+      posts = posts.filter(function(p) { return burnedIds.indexOf(p._id) === -1; });
+    }
 
     // 前端话题筛选（后端未支持时作为 fallback）
     var topicIconVal = this.data.topicIconValue;
