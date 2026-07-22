@@ -12,7 +12,7 @@ Page({
   async onLoad(options) {
     const userId = options.id;
     const app = getApp();
-    const cu = app && app.globalData && app.globalData.currentUser;
+    let cu = app && app.globalData && app.globalData.currentUser;
     if (!cu || !(cu.openid || cu._id)) {
       cu = mock.currentUser;
     }
