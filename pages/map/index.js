@@ -143,10 +143,13 @@ Page({
         id: markerId,
         latitude: item.latitude,
         longitude: item.longitude,
-        width: 32,
-        height: 32,
-        iconPath: "/icons/ing_logo.png",
-        alpha: 1,
+        // 核心修改：把底图缩小并设置为全透明（隐身术）
+        width: 1, 
+        height: 1,
+        alpha: 0, 
+        iconPath: "/icons/ing_logo.png", // 留着路径防止系统报错，反正已经透明看不见了
+        
+        // 这样就只剩下纯净的黄色气泡在地图上了
         callout: {
           content: cleanIcon,
           bgColor: "#FFF9C4",
