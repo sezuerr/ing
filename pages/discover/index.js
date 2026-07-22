@@ -57,13 +57,7 @@ Page({
     currentIndex: 0,
     currentPost: null,
     nextPost: null,
-    comments: [],
-    windowWidth: 375,
-    // 核心圈
-    circleVisible: false,
-    myPasscode: "",
-    friendPasscode: "",
-    passcodeResult: ""
+    windowWidth: 375
   },
 
   onLoad() {
@@ -73,17 +67,20 @@ Page({
       windowWidth: info.windowWidth || 375,
       statusBarHeight: sysInfo.statusBarHeight
     });
-    this.generateMyPasscode();
   },
 
   onShow() {
     var app = getApp();
     var cu = app && app.globalData && app.globalData.currentUser;
-    if (!cu || !cu._id) {
+    if (!cu || !(cu.openid || cu._id)) {
       cu = mock.currentUser;
     }
-    if (cu && cu._id) {
-      this.setData({ currentUserId: cu._id });
+    if (cu && (cu.openid || cu._id)) {
+      this.setData({
+        currentUserId: cu.openid || cu._id,
+        myNickName: cu.nickName || "",
+        myAvatarUrl: cu.avatarUrl || ""
+      });
     }
     this.setTab();
     this.loadFeed();
@@ -103,47 +100,72 @@ Page({
   },
 
   async loadFeed() {
-    wx.showLoading({ title: "加载中" });
-    try {
-      var result = await api.getDiscoverFeed({
-        scope: this.data.scope,
-        topicOnly: this.data.topicOnly,
-        topicIcon: this.data.topicIconValue
-      });
-      var posts = result.posts || [];
+    var result = await api.getDiscoverFeed({
+      scope: this.data.scope,
+      topicOnly: this.data.topicOnly,
+      topicIcon: this.data.topicIconValue
+    });
+    var posts = result.posts || [];
+    // 暂时注释掉 24h 时间过滤，排查数据问题
+    // var posts = (result.posts || []).filter(function(p) {
+    //   return isWithin24h(new Date(p.createdAt).getTime());
+    // });
 
-      var topicIconVal = this.data.topicIconValue;
-      if (topicIconVal) {
-        var selectedIcons = topicIconVal.split(",");
-        posts = posts.filter(function(p) {
-          var postIcon = p.topicIcon || p.icon;
-          return postIcon && selectedIcons.indexOf(postIcon) !== -1;
+    // 去掉客户端硬编码的 universityId 过滤，云函数已通过 applyScope 做 scope 过滤
+    // if (this.data.scopeMode === "university") {
+    //   posts = posts.filter(function(p) {
+    //     return p.universityId === "ruc";
+    //   });
+    // }
+
+    // 前端话题筛选（后端未支持时作为 fallback）
+    var topicIconVal = this.data.topicIconValue;
+    if (topicIconVal) {
+      var selectedIcons = topicIconVal.split(",");
+      posts = posts.filter(function(p) {
+        var postIcon = p.topicIcon || p.icon;
+        return postIcon && selectedIcons.indexOf(postIcon) !== -1;
+      });
+    }
+
+    this.setData({
+      posts: posts,
+      currentIndex: 0,
+      currentPost: posts[0] || null,
+      nextPost: posts[1] || null
+    });
+
+    // 转换云存储图片链接为临时链接
+    this.resolvePostImages(posts);
+  },
+
+  async resolvePostImages(posts) {
+    if (!posts || !posts.length) return;
+    var allUrls = [];
+    posts.forEach(function(p) {
+      if (p.author && p.author.avatarUrl) allUrls.push(p.author.avatarUrl);
+      if (p.imageUrls && p.imageUrls.length) allUrls = allUrls.concat(p.imageUrls);
+      if (p.comments) {
+        p.comments.forEach(function(c) {
+          if (c.fromUser && c.fromUser.avatarUrl) allUrls.push(c.fromUser.avatarUrl);
         });
       }
-
-      var prevId = this.data.currentPost && this.data.currentPost._id;
-      var currentIndex = 0;
-      if (prevId) {
-        for (var i = 0; i < posts.length; i++) {
-          if (posts[i]._id === prevId) {
-            currentIndex = i;
-            break;
-          }
-        }
+    });
+    if (!allUrls.length) return;
+    allUrls = allUrls.filter(function(u, i) { return u && allUrls.indexOf(u) === i; });
+    var resolved = await api.resolveImageUrls(allUrls);
+    var map = {};
+    allUrls.forEach(function(u, i) { map[u] = resolved[i]; });
+    posts.forEach(function(p) {
+      if (p.author && p.author.avatarUrl && map[p.author.avatarUrl]) p.author.avatarUrl = map[p.author.avatarUrl];
+      if (p.imageUrls && p.imageUrls.length) p.imageUrls = p.imageUrls.map(function(u) { return map[u] || u; });
+      if (p.comments) {
+        p.comments.forEach(function(c) {
+          if (c.fromUser && c.fromUser.avatarUrl && map[c.fromUser.avatarUrl]) c.fromUser.avatarUrl = map[c.fromUser.avatarUrl];
+        });
       }
-
-      this.setData({
-        posts: posts,
-        currentIndex: currentIndex,
-        currentPost: posts[currentIndex] || null,
-        nextPost: posts[currentIndex + 1] || null,
-        comments: []
-      });
-    } catch (e) {
-      console.error("[discover] loadFeed 异常", e);
-    } finally {
-      wx.hideLoading();
-    }
+    });
+    this.setData({ posts: posts });
   },
 
   openFilter() {
@@ -155,60 +177,6 @@ Page({
   },
 
   noop() {},
-
-  /* ===== 核心圈 ===== */
-  generateMyPasscode() {
-    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    var code = "";
-    for (var i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    this.setData({ myPasscode: code });
-  },
-
-  openCircle() {
-    this.setData({ circleVisible: true, passcodeResult: "" });
-  },
-
-  closeCircle() {
-    this.setData({ circleVisible: false, friendPasscode: "", passcodeResult: "" });
-  },
-
-  onPasscodeInput(e) {
-    this.setData({ friendPasscode: e.detail.value.toUpperCase(), passcodeResult: "" });
-  },
-
-  verifyPasscode() {
-    var code = this.data.friendPasscode.trim();
-    if (!code) {
-      this.setData({ passcodeResult: "请输入口令" });
-      return;
-    }
-    if (code === this.data.myPasscode) {
-      this.setData({ passcodeResult: "不能添加自己哦" });
-      return;
-    }
-    // 模拟验证：任何 6 位字符串视为有效
-    if (code.length >= 4) {
-      this.setData({ passcodeResult: "已添加为核心好友！" });
-      var self = this;
-      setTimeout(function() {
-        self.closeCircle();
-        wx.showToast({ title: "核心圈已解锁", icon: "success" });
-      }, 1000);
-    } else {
-      this.setData({ passcodeResult: "口令无效，请检查" });
-    }
-  },
-
-  copyPasscode() {
-    wx.setClipboardData({
-      data: this.data.myPasscode,
-      success: function() {
-        wx.showToast({ title: "口令已复制", icon: "success" });
-      }
-    });
-  },
 
   changeScope(event) {
     var scope = event.currentTarget.dataset.value;
@@ -243,84 +211,58 @@ Page({
   },
 
   nextPost() {
-    var nextIndex = this.data.currentIndex + 1;
     var posts = this.data.posts;
-    if (!posts.length) return;
-    // 循环：翻完回到第一张
-    var wrappedIndex = nextIndex % posts.length;
-    var nextWrappedIndex = (nextIndex + 1) % posts.length;
+    var currentPost = this.data.currentPost;
+    if (!posts.length || !currentPost) return;
+
+    // 从本地数组中移除刚刚划走的帖子
+    var remaining = posts.filter(function(p) {
+      return p._id !== currentPost._id;
+    });
+
+    if (remaining.length === 0) {
+      // 全部划完，显示空状态；下次 onShow 或切范围会重新 loadFeed
+      this.setData({
+        posts: [],
+        currentIndex: 0,
+        currentPost: null,
+        nextPost: null
+      });
+      return;
+    }
+
     this.setData({
-      currentIndex: wrappedIndex,
-      currentPost: posts[wrappedIndex] || null,
-      nextPost: posts[nextWrappedIndex] || null,
-      comments: []
+      posts: remaining,
+      currentIndex: 0,
+      currentPost: remaining[0],
+      nextPost: remaining[1] || null
     });
   },
 
-  likePost(event) {
+  async likePost(event) {
     var post = event.detail.post;
-    if (!post || !post._id) return;
-
-    var posts = this.data.posts;
-    var idx = -1;
-    for (var i = 0; i < posts.length; i++) {
-      if (posts[i]._id === post._id) {
-        idx = i;
-        break;
+    try {
+      var result = await api.likePost(post._id);
+      var matched = result && result.matched;
+      if (matched) {
+        // 同时更新 currentPost 引用和 posts 数组中的原始对象
+        post.matched = true;
+        post.likedByMe = true;
+        post.conversationId = result.conversationId || post.conversationId;
+        var posts = this.data.posts;
+        var idx = this.data.currentIndex;
+        if (posts[idx] && posts[idx]._id === post._id) {
+          posts[idx].matched = true;
+          posts[idx].likedByMe = true;
+          posts[idx].conversationId = post.conversationId;
+        }
+        this.setData({ currentPost: post, posts: posts });
       }
+      wx.showToast({ title: matched ? "配对成功！解锁聊天" : "已点亮 · 等待回应", icon: "none" });
+    } catch (e) {
+      console.error("点亮失败", e);
+      wx.showToast({ title: "网络异常，请重试", icon: "none" });
     }
-    if (idx === -1) return;
-
-    var updatedPost = {};
-    for (var k in posts[idx]) {
-      updatedPost[k] = posts[idx][k];
-    }
-    updatedPost.likedByMe = true;
-    if (typeof updatedPost.likeCount === "number") {
-      updatedPost.likeCount += 1;
-    }
-
-    var newPosts = posts.slice();
-    newPosts[idx] = updatedPost;
-
-    this.setData({
-      posts: newPosts,
-      currentPost: updatedPost
-    });
-  },
-
-  onMatch(event) {
-    var post = event.detail.post;
-    if (!post) return;
-
-    var posts = this.data.posts;
-    var idx = -1;
-    for (var i = 0; i < posts.length; i++) {
-      if (posts[i]._id === post._id) {
-        idx = i;
-        break;
-      }
-    }
-    if (idx === -1) return;
-
-    var updatedPost = {};
-    for (var k in posts[idx]) {
-      updatedPost[k] = posts[idx][k];
-    }
-    updatedPost.matched = true;
-    updatedPost.likedByMe = true;
-    if (!updatedPost.author) {
-      updatedPost.author = {};
-    }
-    updatedPost.author.isFriend = true;
-
-    var newPosts = posts.slice();
-    newPosts[idx] = updatedPost;
-
-    this.setData({
-      posts: newPosts,
-      currentPost: updatedPost
-    });
   },
 
   goChat(event) {
@@ -331,28 +273,8 @@ Page({
   async replyPost(event) {
     var data = event.detail;
     if (!data.content) return;
-    wx.showLoading({ title: "发送中" });
-    try {
-      var result = await api.sendPrivateReply({ postId: data.post._id, content: data.content });
-      if (result.__fromFallback) {
-        wx.showToast({ title: "网络异常，请重试", icon: "none" });
-        return;
-      }
-      wx.showToast({ title: "已发送", icon: "success" });
-      var newComment = {
-        _id: "local_" + Date.now(),
-        fromUser: { nickName: "", avatarUrl: "" },
-        content: data.content,
-        createdAt: Date.now()
-      };
-      var comments = this.data.comments.slice();
-      comments.unshift(newComment);
-      this.setData({ comments: comments });
-    } catch (e) {
-      wx.showToast({ title: "发送失败，请重试", icon: "none" });
-    } finally {
-      wx.hideLoading();
-    }
+    await api.sendPrivateReply({ postId: data.post._id, content: data.content });
+    wx.showToast({ title: "已发送", icon: "success" });
   },
 
   reportPost(event) {
@@ -368,20 +290,9 @@ Page({
     var reasonVal = event.currentTarget.dataset.value;
     var post = this.data.reportPost;
     if (!post) return;
-    wx.showLoading({ title: "提交中" });
-    try {
-      var result = await api.reportPost({ postId: post._id, reason: reasonVal });
-      if (result.__fromFallback) {
-        wx.showToast({ title: "网络异常，请重试", icon: "none" });
-        return;
-      }
-      wx.showToast({ title: reasonVal === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
-      this.setData({ reportVisible: false });
-      this.nextPost();
-    } catch (e) {
-      wx.showToast({ title: "提交失败，请重试", icon: "none" });
-    } finally {
-      wx.hideLoading();
-    }
+    await api.reportPost({ postId: post._id, reason: reasonVal });
+    wx.showToast({ title: reasonVal === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
+    this.setData({ reportVisible: false });
+    this.nextPost();
   }
 });

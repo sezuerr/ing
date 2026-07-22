@@ -116,27 +116,6 @@ button {
   border-bottom: 0;
 }
 
-.corner-bulb {
-  position: absolute;
-  top: calc(16rpx + env(safe-area-inset-top));
-  left: 28rpx;
-  z-index: 50;
-  width: 72rpx;
-  height: 72rpx;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, var(--color-accent-light), var(--color-accent-dark));
-  box-shadow: 0 8rpx 28rpx rgba(255, 193, 7, 0.4);
-}
-
-.corner-bulb .footer-icon {
-  width: 52rpx;
-  height: 52rpx;
-}
-
 .input,
 .textarea {
   width: 100%;
@@ -155,4 +134,12 @@ button {
 .textarea {
   min-height: 240rpx;
   padding: 22rpx;
+}
+
+.top-logo {
+  display: block;
+  width: 120rpx;
+  height: 60rpx;
+  margin-bottom: 20rpx;
+  flex: 0 0 auto;
 }

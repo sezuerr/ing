@@ -41,11 +41,18 @@
 }
 
 /* ===== 大学/同城切换 ===== */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 20rpx;
+}
+
 .scope-toggle-row {
   display: flex;
   gap: 12rpx;
   align-items: center;
-  align-self: flex-start;
   border-radius: 999rpx;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(14rpx);
@@ -78,18 +85,6 @@
   gap: 16rpx;
   margin-top: 16rpx;
   align-self: flex-start;
-}
-
-.circle-btn {
-  display: flex;
-  width: 72rpx;
-  height: 72rpx;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(14rpx);
-  -webkit-backdrop-filter: blur(14rpx);
 }
 
 /* 筛选图标容器样式 */
@@ -137,14 +132,7 @@
   width: 33%;
 }
 
-.circle-icon {
-  width: 40rpx;
-  height: 40rpx;
-}
-
-/* ===== 呼吸灯泡 ===== */
-
-/* ==================== 卡片区域 ==================== */
+/* ===== 卡片区域 ===== */
 .swipe-area {
   width: 100%;
 }
@@ -372,116 +360,6 @@
   border-radius: 2rpx;
   transform: rotate(-45deg);
   margin-bottom: 6rpx;
-}
-
-/* ===== 核心圈面板 ===== */
-.circle-sheet {
-  z-index: 102;
-}
-
-.circle-body {
-  flex: 1;
-  padding: 8rpx 0;
-  overflow-y: auto;
-}
-
-.circle-section {
-  padding: 20rpx 4rpx;
-}
-
-.circle-label {
-  color: var(--color-text-secondary);
-  font-size: 24rpx;
-  font-weight: 600;
-  margin-bottom: 16rpx;
-  letter-spacing: 1rpx;
-}
-
-.passcode-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-}
-
-.passcode-display {
-  flex: 1;
-  height: 92rpx;
-  line-height: 92rpx;
-  padding: 0 32rpx;
-  border-radius: 999rpx;
-  background: var(--color-accent-soft);
-  color: var(--color-text-primary);
-  font-size: 36rpx;
-  font-weight: 900;
-  letter-spacing: 12rpx;
-  text-align: center;
-}
-
-.copy-btn {
-  height: 92rpx;
-  padding: 0 36rpx;
-  border-radius: 999rpx;
-  background: linear-gradient(135deg, #ffd84d, #ffb300);
-  color: #15130d;
-  font-size: 28rpx;
-  font-weight: 800;
-  line-height: 92rpx;
-  box-shadow: 0 4rpx 16rpx rgba(255, 193, 7, 0.25);
-}
-
-.circle-hint {
-  display: block;
-  margin-top: 12rpx;
-  color: #aaa18e;
-  font-size: 22rpx;
-  line-height: 32rpx;
-}
-
-.circle-divider {
-  height: 2rpx;
-  margin: 0 4rpx;
-  background: rgba(21, 19, 13, 0.07);
-}
-
-.passcode-input {
-  height: 92rpx;
-  padding: 0 32rpx;
-  border-radius: 999rpx;
-  background: var(--color-accent-soft);
-  color: var(--color-text-primary);
-  font-size: 34rpx;
-  font-weight: 800;
-  letter-spacing: 8rpx;
-  text-align: center;
-}
-
-.passcode-verify {
-  height: 88rpx;
-  margin-top: 16rpx;
-  border-radius: 999rpx;
-  background: var(--color-dark-fill);
-  color: var(--color-accent-light);
-  font-size: 28rpx;
-  font-weight: 800;
-  line-height: 88rpx;
-  text-align: center;
-  box-shadow: 0 4rpx 16rpx rgba(21, 19, 13, 0.2);
-}
-
-.passcode-result {
-  margin-top: 16rpx;
-  text-align: center;
-  font-size: 26rpx;
-  font-weight: 600;
-  line-height: 38rpx;
-}
-
-.passcode-result.success {
-  color: #2e7d32;
-}
-
-.passcode-result.error {
-  color: #c62828;
 }
 
 /* ===== 举报浮层 ===== */

@@ -45,7 +45,6 @@ async function ensureUser(openid, profile = {}) {
   const existing = await getUserByOpenId(openid);
   if (existing) return existing;
 
-  const t = now();
   const doc = {
     openid,
     avatarUrl: profile.avatarUrl || "",
@@ -58,8 +57,8 @@ async function ensureUser(openid, profile = {}) {
     geoHash: profile.geoHash || "",
     privacy: { showToFriendsOnly: false },
     stats: { likeCount: 0, commentCount: 0 },
-    createdAt: t,
-    updatedAt: t
+    createdAt: now(),
+    updatedAt: now()
   };
   const created = await db.collection(C.users).add({ data: doc });
   return { _id: created._id, ...doc };
@@ -77,23 +76,21 @@ async function loginAndSyncProfile(openid, payload) {
 }
 
 async function updateProfile(openid, payload) {
-  await ensureUser(openid);
-  const allowed = {};
-  if (payload.avatarUrl != null) allowed.avatarUrl = payload.avatarUrl;
-  if (payload.nickName != null) allowed.nickName = String(payload.nickName).slice(0, 20);
-  if (payload.gender != null) allowed.gender = payload.gender;
-  if (payload.bio != null) allowed.bio = String(payload.bio).slice(0, 50);
-  if (payload.universityId != null) allowed.universityId = payload.universityId;
-  if (payload.universityName != null) allowed.universityName = payload.universityName;
-  if (payload.cityCode != null) allowed.cityCode = payload.cityCode;
-  if (payload.geoHash != null) allowed.geoHash = payload.geoHash;
-  if (!Object.keys(allowed).length) return ok({});
+  const user = await ensureUser(openid);
+  const allowed = {
+    avatarUrl: payload.avatarUrl || "",
+    nickName: String(payload.nickName || "").slice(0, 20),
+    gender: payload.gender || "非二元",
+    bio: String(payload.bio || "").slice(0, 50),
+    universityId: payload.universityId || "",
+    universityName: payload.universityName || "",
+    cityCode: payload.cityCode || "",
+    geoHash: payload.geoHash || "",
+    updatedAt: now()
+  };
 
-  const t = now();
-  allowed.updatedAt = t;
-  await db.collection(C.users).where({ openid }).update({ data: allowed });
-  const user = await getUserByOpenId(openid);
-  return ok(user);
+  await db.collection(C.users).doc(user._id).update({ data: allowed });
+  return ok({ ...user, ...allowed });
 }
 
 function canSeePost(post, user, friendIds) {
@@ -107,15 +104,14 @@ function canSeePost(post, user, friendIds) {
 function applyScope(post, user, scope, friendIds) {
   if (scope === "university") return post.universityId && post.universityId === user.universityId;
   if (scope === "friends") return friendIds.includes(post.authorId);
-  if (scope === "city") return !post.cityCode || post.cityCode === user.cityCode;
-  return true;
+  return post.cityCode && post.cityCode === user.cityCode;
 }
 
 async function getFriendIds(openid) {
   const matches = await db.collection(C.matches).where({
     members: _.all([openid]),
     status: "active"
-  }).limit(500).get();
+  }).limit(100).get();
   return matches.data.map((match) => match.members.find((id) => id !== openid)).filter(Boolean);
 }
 
@@ -123,21 +119,21 @@ async function getExcludedPostIds(openid) {
   const actions = await db.collection(C.actions).where({
     userId: openid,
     action: _.in(["swiped", "not_interested", "reported"])
-  }).limit(1000).get();
+  }).limit(200).get();
   return actions.data.map((item) => item.postId);
 }
 
 async function getDiscoverFeed(openid, payload) {
   const user = await ensureUser(openid);
-  const scope = payload.scope;
-  const pageSize = payload.pageSize || 30;
+  const scope = payload.scope || "city";
   const friendIds = await getFriendIds(openid);
   const excludedIds = await getExcludedPostIds(openid);
   const postsResult = await db.collection(C.posts).where({
     status: "visible"
   }).orderBy("createdAt", "desc").limit(100).get();
 
-  const filtered = postsResult.data.filter((post) => {
+  // 先收集所有候选帖子的作者 ID，批量查询"我是否点赞过他们"
+  const candidatePosts = postsResult.data.filter(post => {
     if (post.authorId === openid) return false;
     if (excludedIds.includes(post._id)) return false;
     if (!canSeePost(post, user, friendIds)) return false;
@@ -145,53 +141,83 @@ async function getDiscoverFeed(openid, payload) {
     if (payload.topicOnly && !post.dailyTopicId) return false;
     return true;
   });
+  const authorIds = [...new Set(candidatePosts.map(p => p.authorId))];
 
-  const authorIds = [...new Set(filtered.map((p) => p.authorId))];
-  const authorResults = await Promise.all(
-    authorIds.map((id) => getUserByOpenId(id))
-  );
-  const authorMap = {};
-  authorIds.forEach((id, i) => { authorMap[id] = authorResults[i]; });
+  // 批量查：我点赞过哪些作者（likedByMe）
+  const myLikes = authorIds.length > 0
+    ? (await db.collection(C.likes).where({
+        fromUserId: openid,
+        toUserId: _.in(authorIds)
+      }).limit(200).get()).data
+    : [];
+  const likedAuthorIds = new Set(myLikes.map(l => l.toUserId));
 
-  const authorIdsDedup = [...new Set(filtered.map(p => p.authorId))];
+  // 批量查：哪些作者点赞过我（likedMe）
+  const likesToMe = authorIds.length > 0
+    ? (await db.collection(C.likes).where({
+        fromUserId: _.in(authorIds),
+        toUserId: openid
+      }).limit(200).get()).data
+    : [];
+  const likedMeAuthorIds = new Set(likesToMe.map(l => l.fromUserId));
 
-  const likesBatchResult = await db.collection(C.likes).where({
-    fromUserId: _.in(authorIdsDedup),
-    toUserId: openid
-  }).limit(1000).get();
-  const likedByAuthorSet = new Set(likesBatchResult.data.map(l => l.fromUserId));
-  const likesMap = {};
-  filtered.forEach((post) => {
-    likesMap[post._id] = likedByAuthorSet.has(post.authorId);
-  });
+  // 批量查：所有候选帖子的评论（每个帖子最多取 3 条）
+  const postIds = candidatePosts.map(p => p._id);
+  const commentsResult = postIds.length > 0
+    ? (await db.collection(C.comments).where({
+        postId: _.in(postIds)
+      }).orderBy("createdAt", "desc").limit(200).get()).data
+    : [];
+  const commentsByPost = {};
+  for (const c of commentsResult) {
+    if (!commentsByPost[c.postId]) commentsByPost[c.postId] = [];
+    if (commentsByPost[c.postId].length < 3) {
+      commentsByPost[c.postId].push(c);
+    }
+  }
 
-  const myLikesBatchResult = await db.collection(C.likes).where({
-    fromUserId: openid,
-    toUserId: _.in(authorIdsDedup)
-  }).limit(1000).get();
-  const likedByMeSet = new Set(myLikesBatchResult.data.map(l => l.toUserId));
-  const likedByMeMap = {};
-  filtered.forEach((post) => {
-    likedByMeMap[post._id] = likedByMeSet.has(post.authorId);
-  });
-
-  const enriched = filtered.map((post) => {
-    const author = authorMap[post.authorId];
+  const enriched = [];
+  for (const post of candidatePosts) {
+    const author = await getUserByOpenId(post.authorId);
     const isFriend = friendIds.includes(post.authorId);
-    return {
+    const likedMe = likedMeAuthorIds.has(post.authorId);
+    const likedByMe = likedAuthorIds.has(post.authorId);
+    const postComments = (commentsByPost[post._id] || []).slice(0, 3);
+
+    // 评论者信息脱敏：仅好友（已配对）可见真实信息
+    const visibleComments = [];
+    for (const c of postComments) {
+      const commenterIsMe = c.fromUserId === openid;
+      const commenterIsFriend = friendIds.includes(c.fromUserId);
+      const shouldReveal = commenterIsMe || commenterIsFriend || c.fromUserId === post.authorId;
+      const commenter = shouldReveal ? await getUserByOpenId(c.fromUserId) : null;
+      visibleComments.push({
+        _id: c._id,
+        content: c.content,
+        createdAt: c.createdAt,
+        isAuthor: c.fromUserId === post.authorId,
+        fromUser: shouldReveal && commenter ? {
+          nickName: commenter.nickName,
+          avatarUrl: commenter.avatarUrl
+        } : null
+      });
+    }
+
+    enriched.push({
       ...post,
-      imageUrls: Array.isArray(post.imageUrls) ? post.imageUrls.map(function(url) { return typeof url === "string" ? url.trim() : url; }) : [],
       author: isFriend && author ? {
         nickName: author.nickName,
         avatarUrl: author.avatarUrl,
         isFriend: true
       } : { isFriend: false },
       mutualFriendCount: isFriend ? 1 : 0,
-      likedMe: likesMap[post._id] || false,
-      likedByMe: likedByMeMap[post._id] || false,
+      likedMe,
+      likedByMe,
+      matched: isFriend,
+      comments: visibleComments,
       distanceText: post.distanceText || "距你10公里内"
-    };
-  });
+    });
+  }
 
   enriched.sort((a, b) => {
     const aAffinity = (a.authorLikeCount || 0) * 1000 + (a.mutualFriendCount || 0) * 100;
@@ -204,7 +230,7 @@ async function getDiscoverFeed(openid, payload) {
 
   const topicResult = await db.collection(C.topics).where({ status: "active" }).orderBy("date", "desc").limit(1).get();
   return ok({
-    posts: enriched.slice(0, pageSize),
+    posts: enriched.slice(0, 30),
     dailyTopic: topicResult.data[0] || null
   });
 }
@@ -213,15 +239,14 @@ async function createPost(openid, payload) {
   const user = await ensureUser(openid);
   const title = String(payload.title || "").trim();
   const body = String(payload.body || "").trim();
-  if (!title || !body) return fail("标题和正文不能为空");
+  if (!body) return fail("正文不能为空");
 
-  const t = now();
   const doc = {
     authorId: openid,
     title: title.slice(0, 40),
     body: body.slice(0, 800),
     icon: payload.icon || "💡",
-    imageUrls: Array.isArray(payload.imageUrls) ? payload.imageUrls.slice(0, 9).map(function(url) { return typeof url === "string" ? url.trim() : url; }) : [],
+    imageUrls: Array.isArray(payload.imageUrls) ? payload.imageUrls.slice(0, 9) : [],
     visibility: payload.visibility || "public",
     cityCode: payload.cityCode || user.cityCode,
     universityId: payload.universityId || user.universityId,
@@ -234,20 +259,19 @@ async function createPost(openid, payload) {
     reviewStatus: "pending",
     likeCount: 0,
     commentCount: 0,
-    createdAt: t,
-    updatedAt: t
+    createdAt: now(),
+    updatedAt: now()
   };
   const result = await db.collection(C.posts).add({ data: doc });
   return ok({ _id: result._id, ...doc });
 }
 
 async function createNotification(data) {
-  const t = now();
   return db.collection(C.notifications).add({
     data: {
       ...data,
       read: false,
-      createdAt: t
+      createdAt: now()
     }
   });
 }
@@ -255,11 +279,10 @@ async function createNotification(data) {
 async function createOrGetMatch(openid, peerId) {
   const pairKey = sortPair(openid, peerId);
   const existing = await db.collection(C.matches).where({ pairKey }).limit(1).get();
-  const t = now();
   if (existing.data[0]) {
     if (existing.data[0].status !== "active") {
       await db.collection(C.matches).doc(existing.data[0]._id).update({
-        data: { status: "active", unmatchedAt: null, updatedAt: t }
+        data: { status: "active", unmatchedAt: null, updatedAt: now() }
       });
     }
     return existing.data[0];
@@ -271,35 +294,21 @@ async function createOrGetMatch(openid, peerId) {
     userA: openid,
     userB: peerId,
     status: "active",
-    createdAt: t,
-    updatedAt: t
+    createdAt: now(),
+    updatedAt: now()
   };
-
-  let created;
-  try {
-    created = await db.collection(C.matches).add({ data: matchDoc });
-  } catch (e) {
-    if (e.errCode === 11000 || String(e).includes("duplicate")) {
-      const retry = await db.collection(C.matches).where({ pairKey }).limit(1).get();
-      if (retry.data[0]) return retry.data[0];
+  const created = await db.collection(C.matches).add({ data: matchDoc });
+  await db.collection(C.conversations).add({
+    data: {
+      members: [openid, peerId],
+      matchId: created._id,
+      lastMessage: { text: "你们互相点亮了", createdAt: now() },
+      unreadMap: { [openid]: 0, [peerId]: 1 },
+      status: "active",
+      createdAt: now(),
+      updatedAt: now()
     }
-    throw e;
-  }
-
-  const convResult = await db.collection(C.conversations).where({ matchId: created._id }).limit(1).get();
-  if (!convResult.data.length) {
-    await db.collection(C.conversations).add({
-      data: {
-        members: [openid, peerId],
-        matchId: created._id,
-        lastMessage: { text: "你们互相点亮了", createdAt: t },
-        unreadMap: { [openid]: 0, [peerId]: 1 },
-        status: "active",
-        createdAt: t,
-        updatedAt: t
-      }
-    });
-  }
+  });
   return { _id: created._id, ...matchDoc };
 }
 
@@ -308,59 +317,92 @@ async function likePost(openid, payload) {
   const postResult = await db.collection(C.posts).doc(postId).get();
   const post = postResult.data;
   if (!post || post.authorId === openid) return fail("不能点亮自己的帖子");
+  if (post.status !== "visible") return fail("帖子已失效", "NOT_FOUND");
 
+  // 检查是否已点赞该帖子（幂等保护）
   const duplicate = await db.collection(C.likes).where({ postId, fromUserId: openid }).limit(1).get();
-  if (duplicate.data.length) return ok({ matched: false, duplicate: true, likedByMe: true });
-
-  const t = now();
-  try {
-    await db.collection(C.likes).add({
-      data: {
-        postId,
-        fromUserId: openid,
-        toUserId: post.authorId,
-        createdAt: t
-      }
-    });
-  } catch (e) {
-    if (e.errCode === 11000) return ok({ matched: false, duplicate: true, likedByMe: true });
-    throw e;
+  if (duplicate.data.length) {
+    // 虽是重复请求，但仍检查是否已有配对，返回正确状态给前端
+    const existingMatch = await activeMatch(openid, post.authorId);
+    if (existingMatch) {
+      const conv = await db.collection(C.conversations).where({ matchId: existingMatch._id }).limit(1).get();
+      return ok({ matched: true, duplicate: true, matchId: existingMatch._id, conversationId: conv.data[0] ? conv.data[0]._id : null });
+    }
+    return ok({ matched: false, duplicate: true });
   }
-  await db.collection(C.posts).doc(postId).update({ data: { likeCount: _.inc(1) } });
-  await db.collection(C.users).where({ openid: post.authorId }).update({ data: { "stats.likeCount": _.inc(1) } });
-  await createNotification({
-    recipientId: post.authorId,
-    type: "like",
-    actorId: openid,
-    postId,
-    title: "收到一个点亮",
-    description: `有人点亮了你的帖子「${post.title}」。`
+
+  // 1. 写入点赞记录
+  await db.collection(C.likes).add({
+    data: {
+      postId,
+      fromUserId: openid,
+      toUserId: post.authorId,
+      createdAt: now()
+    }
   });
 
+  // 2. 更新帖子与用户计数（允许部分失败，不影响核心流程）
+  try {
+    await db.collection(C.posts).doc(postId).update({ data: { likeCount: _.inc(1) } });
+    await db.collection(C.users).where({ openid: post.authorId }).update({ data: { "stats.likeCount": _.inc(1) } });
+  } catch (e) {
+    console.warn("更新计数失败（非关键）", e);
+  }
+
+  // 3. 通知帖子作者
+  try {
+    await createNotification({
+      recipientId: post.authorId,
+      type: "like",
+      actorId: openid,
+      postId,
+      title: "收到一个点亮",
+      description: `有人点亮了你的帖子「${(post.body || "无内容").slice(0, 20)}」。`
+    });
+  } catch (e) {
+    console.warn("创建点赞通知失败（非关键）", e);
+  }
+
+  // 4. 检查是否互亮（对方是否已点亮过我）
   const reciprocal = await db.collection(C.likes).where({
     fromUserId: post.authorId,
     toUserId: openid
   }).limit(1).get();
-  if (!reciprocal.data.length) return ok({ matched: false, likedByMe: true });
 
-  await createOrGetMatch(openid, post.authorId);
-  await createNotification({
-    recipientId: post.authorId,
-    type: "match",
-    actorId: openid,
-    postId,
-    title: "配对成功",
-    description: "你们互相点亮了，可以开始聊天。"
-  });
-  await createNotification({
-    recipientId: openid,
-    type: "match",
-    actorId: post.authorId,
-    postId,
-    title: "配对成功",
-    description: "你们互相点亮了，可以开始聊天。"
-  });
-  return ok({ matched: true, likedByMe: true });
+  if (!reciprocal.data.length) {
+    return ok({ matched: false });
+  }
+
+  // 5. 互亮 → 创建或恢复配对
+  const match = await createOrGetMatch(openid, post.authorId);
+
+  // 6. 查找对应的会话 ID
+  const convResult = await db.collection(C.conversations).where({ matchId: match._id }).limit(1).get();
+  const conversationId = convResult.data[0] ? convResult.data[0]._id : null;
+
+  // 7. 通知双方配对成功
+  try {
+    await createNotification({
+      recipientId: post.authorId,
+      type: "match",
+      actorId: openid,
+      postId,
+      title: "配对成功",
+      description: "你们互相点亮了，可以开始聊天。"
+    });
+    await createNotification({
+      recipientId: openid,
+      type: "match",
+      actorId: post.authorId,
+      postId,
+      title: "配对成功",
+      description: "你们互相点亮了，可以开始聊天。"
+    });
+  } catch (e) {
+    console.warn("创建配对通知失败（非关键）", e);
+  }
+
+  return ok({ matched: true, matchId: match._id, conversationId });
 }
 
 async function sendPrivateReply(openid, payload) {
@@ -403,30 +445,15 @@ async function getNotifications(openid, payload = {}) {
     .limit(50)
     .get();
 
-  const notificationActorIds = [...new Set(result.data.map(item => item.actorId))];
-  const matchResults = await Promise.all(
-    notificationActorIds.map(id => activeMatch(openid, id))
-  );
-  const revealedMap = {};
-  notificationActorIds.forEach((id, i) => { revealedMap[id] = Boolean(matchResults[i]); });
-
-  const revealedIds = notificationActorIds.filter(id => revealedMap[id]);
-  const userBatchResult = revealedIds.length > 0
-    ? await db.collection(C.users).where({
-        openid: _.in(revealedIds)
-      }).get()
-    : { data: [] };
-  const userMap = {};
-  userBatchResult.data.forEach(u => { userMap[u.openid] = u; });
-
-  const notifications = result.data.map(item => {
-    const revealed = revealedMap[item.actorId];
-    const actor = revealed ? userMap[item.actorId] : null;
-    return {
+  const notifications = [];
+  for (const item of result.data) {
+    const revealed = Boolean(await activeMatch(openid, item.actorId));
+    const actor = revealed ? await getUserByOpenId(item.actorId) : null;
+    notifications.push({
       ...item,
       actor: actor ? { nickName: actor.nickName, avatarUrl: actor.avatarUrl } : null
-    };
-  });
+    });
+  }
   return ok({ notifications });
 }
 
@@ -475,23 +502,17 @@ async function getConversations(openid) {
     .orderBy("updatedAt", "desc")
     .limit(50)
     .get();
-  const peerIds = result.data.map(item => item.members.find(id => id !== openid));
-  const peerBatchResult = await db.collection(C.users).where({
-    openid: _.in(peerIds)
-  }).limit(peerIds.length).get();
-  const peerMap = {};
-  peerBatchResult.data.forEach(u => { peerMap[u.openid] = u; });
-
-  const conversations = result.data.map(item => {
-    const peerId = item.members.find(id => id !== openid);
-    const peer = peerMap[peerId];
-    return {
+  const conversations = [];
+  for (const item of result.data) {
+    const peerId = item.members.find((id) => id !== openid);
+    const peer = await getUserByOpenId(peerId);
+    conversations.push({
       ...item,
       peerId,
       peer: peer ? { nickName: peer.nickName, avatarUrl: peer.avatarUrl } : { nickName: "同学", avatarUrl: "" },
       unreadCount: item.unreadMap && item.unreadMap[openid] ? item.unreadMap[openid] : 0
-    };
-  });
+    });
+  }
   return ok({ conversations });
 }
 
@@ -504,21 +525,20 @@ async function sendMessage(openid, payload) {
   const content = String(payload.content || "").trim().slice(0, 1000);
   if (!content) return fail("消息不能为空");
   const peerId = conversation.members.find((id) => id !== openid);
-  const t = now();
   await db.collection(C.messages).add({
     data: {
       conversationId: payload.conversationId,
       senderId: openid,
       content,
       readBy: [openid],
-      createdAt: t
+      createdAt: now()
     }
   });
   await db.collection(C.conversations).doc(payload.conversationId).update({
     data: {
-      lastMessage: { text: content, createdAt: t },
+      lastMessage: { text: content, createdAt: now() },
       [`unreadMap.${peerId}`]: _.inc(1),
-      updatedAt: t
+      updatedAt: now()
     }
   });
   return ok({ sent: true });
@@ -547,13 +567,12 @@ async function getMessages(openid, payload) {
 async function unmatchUser(openid, payload) {
   const conversation = (await db.collection(C.conversations).doc(payload.conversationId).get()).data;
   if (!conversation || !conversation.members.includes(openid)) return fail("无权解除配对", "FORBIDDEN");
-  const t = now();
   await db.collection(C.conversations).doc(payload.conversationId).update({
-    data: { status: "unmatched", updatedAt: t }
+    data: { status: "unmatched", updatedAt: now() }
   });
   if (conversation.matchId) {
     await db.collection(C.matches).doc(conversation.matchId).update({
-      data: { status: "unmatched", unmatchedAt: t, updatedAt: t }
+      data: { status: "unmatched", unmatchedAt: now(), updatedAt: now() }
     });
   }
   return ok({ unmatched: true });
@@ -561,14 +580,13 @@ async function unmatchUser(openid, payload) {
 
 async function reportPost(openid, payload) {
   const reason = payload.reason || "not_interested";
-  const t = now();
   await db.collection(C.reports).add({
     data: {
       postId: payload.postId,
       reporterId: openid,
       reason,
       status: "pending",
-      createdAt: t
+      createdAt: now()
     }
   });
   await db.collection(C.actions).add({
@@ -576,7 +594,7 @@ async function reportPost(openid, payload) {
       userId: openid,
       postId: payload.postId,
       action: reason === "not_interested" ? "not_interested" : "reported",
-      createdAt: t
+      createdAt: now()
     }
   });
   return ok({ reported: true });
@@ -610,73 +628,125 @@ async function getMyPosts(openid) {
     .orderBy("createdAt", "desc")
     .limit(50)
     .get();
-  const posts = result.data.map(function(post) {
-    if (Array.isArray(post.imageUrls)) {
-      post.imageUrls = post.imageUrls.map(function(url) { return typeof url === "string" ? url.trim() : url; });
-    }
-    return post;
-  });
-  return ok({ posts: posts });
+  return ok({ posts: result.data });
 }
 
 async function getPostDetail(openid, payload) {
   const post = (await db.collection(C.posts).doc(payload.postId).get()).data;
   if (!post) return fail("帖子不存在", "NOT_FOUND");
-  if (post.authorId !== openid) {
-    const match = await activeMatch(openid, post.authorId);
-    if (!match) return fail("无权查看评论明细", "FORBIDDEN");
+
+  // 自己的帖子：直接返回
+  if (post.authorId === openid) {
+    const comments = await db.collection(C.comments)
+      .where({ postId: payload.postId })
+      .orderBy("createdAt", "desc")
+      .limit(100)
+      .get();
+    const enrichedComments = [];
+    for (const comment of comments.data) {
+      const fromUser = await getUserByOpenId(comment.fromUserId);
+      enrichedComments.push({
+        ...comment,
+        fromUser: fromUser ? {
+          nickName: fromUser.nickName,
+          avatarUrl: fromUser.avatarUrl
+        } : { nickName: "好友", avatarUrl: "" }
+      });
+    }
+    return ok({ post, comments: enrichedComments });
   }
 
-  const friendIds = await getFriendIds(openid);
-  const isFriend = friendIds.includes(post.authorId) || (post.authorId === openid);
+  // 别人的帖子：需配对才能查看
+  const match = await activeMatch(openid, post.authorId);
+  if (!match) return fail("无权查看评论明细", "FORBIDDEN");
 
-  const likeFrom = await db.collection(C.likes).where({
+  // 补齐匹配状态，保证 post-card 组件渲染与发现页一致
+  const author = await getUserByOpenId(post.authorId);
+  const likedMe = await db.collection(C.likes).where({
     fromUserId: post.authorId,
     toUserId: openid
   }).limit(1).get();
-  const likedMe = likeFrom.data.length > 0;
-
-  const likeTo = await db.collection(C.likes).where({
+  const likedByMe = await db.collection(C.likes).where({
     fromUserId: openid,
     toUserId: post.authorId
   }).limit(1).get();
-  const likedByMe = likeTo.data.length > 0;
 
-  const enrichedPost = {
-    ...post,
-    imageUrls: Array.isArray(post.imageUrls) ? post.imageUrls.map(function(url) { return typeof url === "string" ? url.trim() : url; }) : [],
-    author: isFriend && post.authorId !== openid ? {
-      nickName: (await getUserByOpenId(post.authorId))?.nickName || "好友",
-      avatarUrl: (await getUserByOpenId(post.authorId))?.avatarUrl || "",
-      isFriend: true
-    } : post.author || { isFriend: false },
-    isFriend: isFriend,
-    likedMe: likedMe,
-    likedByMe: likedByMe
-  };
+  // 查询评论
   const comments = await db.collection(C.comments)
     .where({ postId: payload.postId })
     .orderBy("createdAt", "desc")
     .limit(100)
     .get();
-  const commentUserIds = [...new Set(comments.data.map(c => c.fromUserId))];
-  const commentUserResults = await db.collection(C.users).where({
-    openid: _.in(commentUserIds)
-  }).limit(commentUserIds.length).get();
-  const commentUserMap = {};
-  commentUserResults.data.forEach(u => { commentUserMap[u.openid] = u; });
 
-  const enrichedComments = comments.data.map(comment => {
-    const fromUser = commentUserMap[comment.fromUserId];
-    return {
-      ...comment,
-      fromUser: fromUser ? {
-        nickName: fromUser.nickName,
-        avatarUrl: fromUser.avatarUrl
-      } : { nickName: "好友", avatarUrl: "" }
-    };
-  });
-  return ok({ post: enrichedPost, comments: enrichedComments });
+  // 收集所有评论者 ID
+  const commenterIds = [...new Set(comments.data.map(c => c.fromUserId))];
+  const friendIdSet = new Set(await getFriendIds(openid));
+
+  // 格式化评论（与 getDiscoverFeed 一致）
+  const visibleComments = [];
+  for (const c of comments.data) {
+    const commenterIsMe = c.fromUserId === openid;
+    const commenterIsFriend = friendIdSet.has(c.fromUserId) || c.fromUserId === post.authorId;
+    const shouldReveal = commenterIsMe || commenterIsFriend;
+    const commenter = shouldReveal ? await getUserByOpenId(c.fromUserId) : null;
+    visibleComments.push({
+      _id: c._id,
+      content: c.content,
+      createdAt: c.createdAt,
+      isAuthor: c.fromUserId === post.authorId,
+      fromUser: shouldReveal && commenter ? {
+        nickName: commenter.nickName,
+        avatarUrl: commenter.avatarUrl
+      } : null
+    });
+  }
+
+  const enrichedPost = {
+    ...post,
+    author: {
+      nickName: author ? author.nickName : "好友",
+      avatarUrl: author ? author.avatarUrl : "",
+      isFriend: true
+    },
+    mutualFriendCount: 1,
+    likedMe: Boolean(likedMe.data.length),
+    likedByMe: Boolean(likedByMe.data.length),
+    matched: true,
+    comments: visibleComments
+  };
+
+  return ok({ post: enrichedPost, comments: visibleComments });
+}
+
+async function getPostLikers(openid, payload) {
+  const post = (await db.collection(C.posts).doc(payload.postId).get()).data;
+  if (!post) return fail("帖子不存在", "NOT_FOUND");
+  if (post.authorId !== openid) return fail("无权查看", "FORBIDDEN");
+
+  const likesResult = await db.collection(C.likes)
+    .where({ postId: payload.postId })
+    .orderBy("createdAt", "desc")
+    .limit(200)
+    .get();
+
+  const likers = [];
+  for (const like of likesResult.data) {
+    const user = await getUserByOpenId(like.fromUserId);
+    const friendIds = await getFriendIds(openid);
+    const isFriend = friendIds.includes(like.fromUserId);
+    likers.push({
+      _id: like._id,
+      postId: like.postId,
+      fromUser: {
+        _id: like.fromUserId,
+        nickName: isFriend && user ? (user.nickName || "") : "",
+        avatarUrl: isFriend && user ? (user.avatarUrl || "") : "",
+        isFriend: isFriend
+      },
+      createdAt: like.createdAt
+    });
+  }
+  return ok({ likers });
 }
 
 async function getUniversities() {
@@ -702,6 +772,7 @@ const handlers = {
   markPostAction,
   getMyPosts,
   getPostDetail,
+  getPostLikers,
   getUniversities
 };
 
@@ -716,6 +787,6 @@ exports.main = async (event) => {
     return await handlers[action](OPENID, payload);
   } catch (error) {
     console.error(action, error);
-    return fail("服务异常", "INTERNAL_ERROR");
+    return fail(error.message || "服务异常", "INTERNAL_ERROR");
   }
 };

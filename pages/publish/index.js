@@ -1,5 +1,6 @@
 const api = require("../../utils/cloud");
 const { coarseGeoHash } = require("../../utils/geo");
+const { TOPIC_ICONS, VISIBILITY_OPTIONS } = require("../../utils/constants");
 const mock = require("../../utils/mock");
 
 Page({
@@ -8,6 +9,11 @@ Page({
     location: null,
     showLocation: true,
     submitting: false,
+    bodyLength: 0,
+    topicIcons: TOPIC_ICONS,
+    visibilityOpen: false,
+    visibilityOptions: VISIBILITY_OPTIONS,
+    visibilityLabel: "所有人可见",
     form: {
       icon: "💡",
       title: "",
@@ -20,7 +26,6 @@ Page({
 
   onShow() {
     this.setTab();
-    this.loadDailyTopic();
     this.refreshLocation();
   },
 
@@ -30,81 +35,84 @@ Page({
     }
   },
 
-  loadDailyTopic() {
-    if (!this.data.form.title) {
-      this.setData({
-        "form.title": mock.dailyTopic.title,
-        "form.icon": mock.dailyTopic.icon
-      });
-    }
-  },
-
-  onIconChange(event) {
-    this.setData({ "form.icon": event.detail.value });
-  },
-
-  onTitleInput(event) {
-    this.setData({ "form.title": event.detail.value });
+  onEmojiSelect(event) {
+    this.setData({ "form.icon": event.currentTarget.dataset.icon });
   },
 
   onBodyInput(event) {
-    this.setData({ "form.body": event.detail.value });
+    const value = event.detail.value;
+    this.setData({
+      "form.body": value,
+      bodyLength: value.length
+    });
   },
 
-  onVisibilityChange(event) {
-    this.setData({ "form.visibility": event.detail.value });
+  openVisibility() {
+    this.setData({ visibilityOpen: true });
   },
+
+  closeVisibility() {
+    this.setData({ visibilityOpen: false });
+  },
+
+  selectVisibility(e) {
+    var val = e.currentTarget.dataset.value;
+    var opt = this.data.visibilityOptions.find(function(o) { return o.value === val; });
+    this.setData({
+      "form.visibility": val,
+      visibilityLabel: opt ? opt.label : val,
+      visibilityOpen: false
+    });
+  },
+
+  noop() {},
 
   chooseImages() {
-    var max = 9 - this.data.form.imageUrls.length;
-    if (max <= 0) return;
-
-    var app = getApp();
-    if (!wx.cloud || !app.globalData.cloudReady) {
-      wx.showToast({ title: "云服务暂不可用，请稍后重试", icon: "none" });
-      return;
-    }
+    const remaining = 9 - this.data.form.imageUrls.length;
+    if (remaining <= 0) return;
 
     wx.chooseMedia({
-      count: max,
+      count: remaining,
       mediaType: ["image"],
       success: async (res) => {
-        var tempFiles = res.tempFiles || [];
-        var urls = [];
-        var failCount = 0;
-
-        wx.showLoading({ title: "上传中" });
-        for (var i = 0; i < tempFiles.length; i++) {
-          var file = tempFiles[i];
-          try {
-            var ext = (file.tempFilePath.split(".").pop() || "jpg").toLowerCase();
-            var uploaded = await wx.cloud.uploadFile({
-              cloudPath: "posts/" + Date.now() + "_" + Math.random().toString(36).slice(2) + "." + ext,
-              filePath: file.tempFilePath
-            });
-            urls.push(uploaded.fileID.trim());
-          } catch (error) {
-            failCount++;
-            console.warn("[publish] 图片上传失败", error);
+        const tempFiles = res.tempFiles || [];
+        const app = getApp();
+        const urls = [];
+        for (const file of tempFiles) {
+          if (wx.cloud && app.globalData.cloudReady) {
+            try {
+              const ext = (file.tempFilePath.split(".").pop() || "jpg").toLowerCase();
+              const uploaded = await wx.cloud.uploadFile({
+                cloudPath: `posts/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`,
+                filePath: file.tempFilePath
+              });
+              urls.push(uploaded.fileID);
+            } catch (error) {
+              console.warn("upload image fallback", error);
+              urls.push(file.tempFilePath);
+            }
+          } else {
+            urls.push(file.tempFilePath);
           }
         }
-        wx.hideLoading();
-
-        if (failCount > 0) {
-          wx.showToast({ title: failCount + " 张图片上传失败，已自动移除", icon: "none" });
-        }
-        if (urls.length > 0) {
-          this.setData({ "form.imageUrls": this.data.form.imageUrls.concat(urls).slice(0, 9) });
-        }
+        this.setData({
+          "form.imageUrls": this.data.form.imageUrls.concat(urls).slice(0, 9)
+        });
       }
     });
+  },
+
+  removeImage(event) {
+    const index = event.currentTarget.dataset.index;
+    const imageUrls = [...this.data.form.imageUrls];
+    imageUrls.splice(index, 1);
+    this.setData({ "form.imageUrls": imageUrls });
   },
 
   toggleShowLocation() {
     var next = !this.data.showLocation;
     this.setData({ showLocation: next });
     if (next) {
-      // 开启时自动获取定位
       this.refreshLocation();
     } else {
       this.setData({ location: null, locationText: "使用学校和模糊位置" });
@@ -129,10 +137,6 @@ Page({
 
   async submit() {
     const { form } = this.data;
-    if (!form.title.trim()) {
-      wx.showToast({ title: "请填写标题", icon: "none" });
-      return;
-    }
     if (!form.body.trim()) {
       wx.showToast({ title: "请填写正文", icon: "none" });
       return;
@@ -150,7 +154,6 @@ Page({
         cityCode: user.cityCode
       };
 
-      // 仅当用户允许显示位置时提交经纬度
       if (this.data.showLocation && this.data.location) {
         payload.latitude = this.data.location.latitude;
         payload.longitude = this.data.location.longitude;
@@ -158,15 +161,15 @@ Page({
 
       const created = await api.createPost(payload);
 
-      // 只有真正走通云函数才会拿到服务端 _id；本地兜底会是 local_ 前缀。
       if (created && typeof created._id === "string" && created._id.startsWith("local_")) {
         console.warn("[publish] 发布走了本地兜底，未真正写入数据库", created);
       }
 
       this.setData({
+        bodyLength: 0,
         form: {
           icon: "💡",
-          title: mock.dailyTopic.title,
+          title: "",
           body: "",
           imageUrls: [],
           visibility: "public",

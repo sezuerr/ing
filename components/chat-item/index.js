@@ -1,10 +1,17 @@
-const REVEAL_WIDTH = 72;
+let REVEAL_WIDTH = 80; // 约等于 160rpx，组件 attached 时根据屏幕宽度精确计算
 
 Component({
   properties: {
     item: {
       type: Object,
       value: {}
+    }
+  },
+
+  lifetimes: {
+    attached() {
+      var info = wx.getSystemInfoSync();
+      REVEAL_WIDTH = Math.round(160 * info.windowWidth / 750);
     }
   },
 

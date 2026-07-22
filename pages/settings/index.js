@@ -54,8 +54,25 @@ Page({
     }
   },
 
-  onChooseAvatar(event) {
-    this.setData({ "profile.avatarUrl": event.detail.avatarUrl });
+  async onChooseAvatar(event) {
+    const tempPath = event.detail.avatarUrl;
+    if (!tempPath) return;
+
+    // 上传头像到云存储，避免临时路径过期
+    const app = getApp();
+    let avatarUrl = tempPath;
+    if (wx.cloud && app.globalData.cloudReady) {
+      try {
+        const uploaded = await wx.cloud.uploadFile({
+          cloudPath: `avatars/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`,
+          filePath: tempPath
+        });
+        avatarUrl = uploaded.fileID;
+      } catch (err) {
+        console.warn("头像上传云存储失败，使用临时路径", err);
+      }
+    }
+    this.setData({ "profile.avatarUrl": avatarUrl });
   },
 
   onNickNameInput(event) {

@@ -1,5 +1,25 @@
 const { fromNow } = require("../../utils/time");
-const api = require("../../utils/cloud");
+
+// 评论时间简短显示
+function shortTime(ts) {
+  var diff = Date.now() - new Date(ts).getTime();
+  var mins = Math.floor(diff / 60000);
+  if (mins < 1) return "刚刚";
+  if (mins < 60) return mins + "分钟前";
+  var hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + "小时前";
+  var days = Math.floor(hours / 24);
+  if (days < 30) return days + "天前";
+  return Math.floor(days / 30) + "个月前";
+}
+
+// 根据图片数量决定布局类型
+function getImageLayout(count) {
+  if (count === 1) return "one";
+  if (count === 2) return "two";
+  if (count === 4) return "four";
+  return "grid"; // 3, 5, 6, 7, 8, 9 → 3列网格
+}
 
 Component({
   properties: {
@@ -8,6 +28,14 @@ Component({
       value: null
     },
     currentUserId: {
+      type: String,
+      value: ""
+    },
+    myNickName: {
+      type: String,
+      value: ""
+    },
+    myAvatarUrl: {
       type: String,
       value: ""
     },
@@ -20,13 +48,6 @@ Component({
   observers: {
     post(post) {
       if (!post) return;
-      
-      // 【救命补丁1】强制清理图片 URL 前后的多余空格和换行
-      // 彻底解决 Failed to load local image resource 报错！
-      if (post.imageUrls && post.imageUrls.length > 0) {
-        post.imageUrls = post.imageUrls.map(url => typeof url === 'string' ? url.trim() : url);
-      }
-
       var currentUserId = this.data.currentUserId;
       var isMine = currentUserId && post.authorId === currentUserId;
       var isFriend = Boolean(post.author && post.author.isFriend);
@@ -42,19 +63,22 @@ Component({
       } else {
         name = (post.mutualFriendCount || 0) + " 个共同好友";
       }
-      
+      var alreadyLiked = likedByMe || post.matched || false;
+      var imgCount = (post.imageUrls && post.imageUrls.length) || 0;
       this.setData({
         isMine: isMine,
         isFriend: isFriend,
-        canComment: isFriend,
+        canComment: isFriend || likedMe || isMine,
         matched: post.matched || false,
         likedMe: likedMe,
         likedByMe: likedByMe,
         displayName: name,
         avatarText: isMine ? (name || "我").slice(0, 1).toUpperCase() : (isFriend ? (name || "友").slice(0, 1).toUpperCase() : "匿"),
+        authorAvatarUrl: (post.author && post.author.avatarUrl) || "",
         timeText: fromNow(post.createdAt),
-        liked: this.data._liking ? this.data.liked : likedByMe,
-        bulbLit: this.data._liking ? this.data.bulbLit : likedByMe,
+        liked: alreadyLiked,
+        bulbLit: alreadyLiked,
+        imageLayout: getImageLayout(imgCount),
         draft: ""
       });
     }
@@ -68,55 +92,22 @@ Component({
     likedMe: false,
     displayName: "",
     avatarText: "匿",
+    authorAvatarUrl: "",
     timeText: "",
     likedByMe: false,
     liked: false,
     bulbLit: false,
+    imageLayout: "grid",
     draft: ""
   },
 
   methods: {
-    async like() {
-      if (this.data._liking) return;
-      if (this.data.likedByMe || this.data.matched) return;
-
-      var previousState = {
-        liked: this.data.liked,
-        bulbLit: this.data.bulbLit,
-        matched: this.data.matched,
-        likedByMe: this.data.likedByMe,
-        canComment: this.data.canComment
-      };
-
-      this.data._liking = true;
+    like() {
+      if (this.data.liked || this.data.matched) return;
       this.setData({ liked: true, bulbLit: true });
-
-      wx.showLoading({ title: "处理中", mask: true });
-
-      try {
-        var postId = this.data.post._id;
-        var result = await api.likePost(postId);
-
-        if (result && result.__fromFallback) {
-          throw new Error("网络异常，无法连接云端");
-        }
-
-        if (result && result.matched) {
-          this.setData({ matched: true, canComment: true });
-          this.triggerEvent("match", { post: this.data.post });
-          wx.showToast({ title: "配对成功！解锁聊天", icon: "none" });
-        } else {
-          this.setData({ likedByMe: true });
-          this.triggerEvent("like", { post: this.data.post });
-          wx.showToast({ title: "已点亮", icon: "none" });
-        }
-      } catch (err) {
-        console.error("[likePost] 点赞真实报错原因:", err);
-        this.setData(previousState);
-        wx.showToast({ title: err.message || "操作失败，请重试", icon: "none" });
-      } finally {
-        wx.hideLoading();
-        this.data._liking = false;
+      this.triggerEvent("like", { post: this.data.post });
+      if (this.data.likedMe) {
+        this.setData({ matched: true, canComment: true });
       }
     },
 
@@ -135,6 +126,42 @@ Component({
       if (!content) return;
       this.triggerEvent("reply", { post: this.data.post, content });
       this.setData({ draft: "" });
+
+      // 乐观更新：立即把新评论加到卡片上，不需要刷新就能看到
+      var oldPost = this.data.post;
+      var isAuthorComment = this.data.isMine;
+      var nick = isAuthorComment ? (oldPost.author && oldPost.author.nickName || '我') : (this.data.myNickName || '我');
+      var avatar = isAuthorComment ? this.data.authorAvatarUrl : (this.data.myAvatarUrl || '');
+      var newComment = {
+        _id: 'temp_' + Date.now(),
+        content: content,
+        createdAt: new Date().toISOString(),
+        isAuthor: isAuthorComment,
+        fromUser: {
+          nickName: nick,
+          avatarUrl: avatar
+        },
+        _optimistic: true
+      };
+      var newPost = {};
+      for (var k in oldPost) { newPost[k] = oldPost[k]; }
+      newPost.comments = [newComment].concat(oldPost.comments || []);
+      this.setData({ post: newPost });
+    },
+
+    previewImage(event) {
+      var urls = event.currentTarget.dataset.urls;
+      var index = event.currentTarget.dataset.index;
+      if (urls && urls.length) {
+        wx.previewImage({
+          current: urls[index] || urls[0],
+          urls: urls
+        });
+      }
+    },
+
+    commentTime(ts) {
+      return shortTime(ts);
     },
 
     openReport() {

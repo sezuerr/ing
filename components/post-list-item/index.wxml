@@ -1,20 +1,21 @@
 <view class="item" bindtap="open">
   <view class="icon">{{post.icon || '💡'}}</view>
   <view class="content">
-    <view class="head-row">
-      <text class="title">{{post.title}}</text>
-      <text class="time">{{timeText}}</text>
-    </view>
     <text class="body {{expanded ? 'expanded' : ''}}">{{post.body}}</text>
-    <button wx:if="{{needsExpand}}" class="expand" catchtap="toggle">{{expanded ? '收起' : '展开'}}</button>
+    <view wx:if="{{needsExpand}}" class="expand-row">
+      <text class="expand" catchtap="toggle">{{expanded ? '收起' : '展开全部'}}</text>
+    </view>
     <view class="meta-row">
-      <view class="meta-stat">
-        <image class="meta-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
-        <text class="meta-num">{{post.likeCount || 0}}</text>
-      </view>
-      <view class="meta-stat">
-        <image class="meta-icon" src="/icons/chat-1-line.svg" mode="aspectFit" />
-        <text class="meta-num">{{post.commentCount || 0}}</text>
+      <text class="time">{{timeText}}</text>
+      <view wx:if="{{showStats}}" class="meta-stats">
+        <view class="meta-stat">
+          <image class="meta-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
+          <text class="meta-num">{{post.likeCount || 0}}</text>
+        </view>
+        <view class="meta-stat">
+          <image class="meta-icon" src="/icons/chat-1-line.svg" mode="aspectFit" />
+          <text class="meta-num">{{post.commentCount || 0}}</text>
+        </view>
       </view>
     </view>
   </view>

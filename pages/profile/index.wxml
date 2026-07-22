@@ -1,34 +1,75 @@
 <view class="page profile-page">
-  <view class="corner-bulb" catchtap="goHome">
-    <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit"></image>
-  </view>
-  <view class="header">
-    <view class="header-top">
-      <view class="profile-copy">
-        <view class="name">{{user.nickName || '小黄灯'}}</view>
-        <view class="bio">{{user.bio || '还没有写简介'}}</view>
-      </view>
+  <!-- 个人资料头部 -->
+  <view class="profile-header">
+    <!-- 头像区 -->
+    <view class="avatar-wrap">
       <view class="avatar">
         <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
-        <text wx:else>{{avatarText}}</text>
+        <text wx:else class="avatar-placeholder">{{avatarText}}</text>
       </view>
     </view>
-    <view class="stats-row">
-      <text class="stats-text">获赞 {{user.stats.likeCount || 0}} · 评论 {{user.stats.commentCount || 0}}</text>
-      <view class="settings-entry" bindtap="openSettings">
-        <text class="settings-text">设置</text>
-        <image class="settings-icon" src="/icons/settings-4-line.svg" mode="aspectFit" />
-      </view>
+
+    <!-- 名字 & 简介 -->
+    <view class="profile-info">
+      <text class="profile-name">{{user.nickName || '小黄灯'}}</text>
+      <text class="profile-bio">{{user.bio || '还没有写简介，介绍一下自己吧 ✨'}}</text>
+    </view>
+
+    <!-- 编辑资料按钮 -->
+    <view class="edit-profile-btn" bindtap="openSettings">
+      <text class="edit-icon">✎</text>
+      <text class="edit-label">编辑资料</text>
     </view>
   </view>
 
-  <view class="section">
-    <view class="section-tabs">
-      <view class="tab active">帖子</view>
+  <!-- 数据统计卡片 -->
+  <view class="stats-card">
+    <view class="stat-item">
+      <text class="stat-num">{{stats.postCount}}</text>
+      <text class="stat-label">帖子</text>
     </view>
-    <view class="list">
-      <post-list-item wx:for="{{posts}}" wx:key="_id" post="{{item}}" bind:open="openPost" />
-      <view wx:if="{{!posts.length}}" class="empty-row">还没有发布内容</view>
+    <view class="stat-divider" />
+    <view class="stat-item">
+      <text class="stat-num">{{stats.likeCount}}</text>
+      <text class="stat-label">获赞</text>
+    </view>
+    <view class="stat-divider" />
+    <view class="stat-item">
+      <text class="stat-num">{{stats.commentCount}}</text>
+      <text class="stat-label">评论</text>
     </view>
   </view>
+
+  <!-- 内容标签栏 -->
+  <view class="content-tabs">
+    <view class="tab active">
+      <text class="tab-text">帖子</text>
+      <view class="tab-indicator" />
+    </view>
+  </view>
+
+  <!-- 帖子列表 -->
+  <view class="post-list">
+    <block wx:if="{{posts.length}}">
+      <post-list-item
+        wx:for="{{posts}}"
+        wx:key="_id"
+        post="{{item}}"
+        bind:open="openPost"
+      />
+    </block>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-state">
+      <view class="empty-icon-wrap">
+        <text class="empty-icon">📝</text>
+      </view>
+      <text class="empty-title">还没有发布内容</text>
+      <text class="empty-desc">去发布页记录你的第一个 ing 吧</text>
+      <button class="empty-action" bindtap="goPublish">去发布</button>
+    </view>
+  </view>
+
+  <!-- 底部安全区占位 -->
+  <view class="bottom-spacer" />
 </view>

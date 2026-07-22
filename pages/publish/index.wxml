@@ -1,41 +1,136 @@
 <view class="page publish-page">
-  <view class="editor panel">
-    <view class="editor-section">
-      <view class="section-label">话题</view>
-      <view class="topic-row">
-        <topic-icon-picker value="{{form.icon}}" bind:change="onIconChange" />
-        <input class="title-input" maxlength="40" value="{{form.title}}" placeholder="今日话题或自定义标题" bindinput="onTitleInput" />
-      </view>
-    </view>
-
-    <view class="editor-section">
-      <view class="section-label">正文</view>
-      <textarea class="textarea content-input" maxlength="800" value="{{form.body}}" placeholder="写下此刻正在发生的 ing..." bindinput="onBodyInput" />
-    </view>
-
-    <view class="editor-section">
-      <view class="images">
-      <image wx:for="{{form.imageUrls}}" wx:key="*this" src="{{item}}" mode="aspectFill" class="image" />
-      <button class="image-btn" bindtap="chooseImages">+ Image</button>
-      </view>
-    </view>
+  <!-- 页面头部 -->
+  <view class="publish-header">
+    <image class="publish-logo" src="/icons/ing_logo.png" mode="aspectFit" />
   </view>
 
-  <view class="section">
-    <view class="section-title">位置与隐私</view>
-    <view class="panel privacy">
-      <visibility-selector value="{{form.visibility}}" bind:change="onVisibilityChange" />
-      <view class="location-row">
-        <text class="location-text">{{locationText}}</text>
-        <view class="location-toggle" bindtap="toggleShowLocation">
-          <view class="toggle-track {{showLocation ? 'on' : ''}}">
-            <view class="toggle-thumb {{showLocation ? 'on' : ''}}" />
+  <!-- 编辑卡片 -->
+  <view class="editor-card">
+    <!-- Emoji 滚动选择 -->
+    <view class="emoji-picker">
+      <scroll-view scroll-x enhanced show-scrollbar="{{false}}" class="emoji-scroll">
+        <view class="emoji-list">
+          <view
+            wx:for="{{topicIcons}}"
+            wx:key="*this"
+            class="emoji-item {{form.icon === item ? 'selected' : ''}}"
+            data-icon="{{item}}"
+            catchtap="onEmojiSelect"
+          >
+            <text class="emoji-char">{{item}}</text>
           </view>
-          <text class="toggle-label">显示位置</text>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 正文区 -->
+    <view class="form-group body-group">
+      <view class="body-header">
+        <text class="form-label">正文</text>
+        <text class="char-count {{bodyLength > 720 ? 'warn' : ''}}">{{bodyLength}}/800</text>
+      </view>
+      <textarea
+        class="content-input"
+        maxlength="800"
+        value="{{form.body}}"
+        placeholder="写下此刻正在发生的 ing..."
+        placeholder-class="textarea-placeholder"
+        auto-height
+        bindinput="onBodyInput"
+      />
+    </view>
+
+    <!-- 图片区 -->
+    <view class="form-group image-group">
+      <view class="image-header">
+        <text class="form-label">图片</text>
+        <text class="image-count">{{form.imageUrls.length}}/9</text>
+      </view>
+      <view class="image-grid">
+        <view
+          wx:for="{{form.imageUrls}}"
+          wx:key="*this"
+          class="image-item"
+        >
+          <image src="{{item}}" mode="aspectFill" class="image-thumb" />
+          <view class="image-delete" data-index="{{index}}" catchtap="removeImage">
+            <text class="delete-icon">✕</text>
+          </view>
+        </view>
+        <view
+          wx:if="{{form.imageUrls.length < 9}}"
+          class="image-add"
+          bindtap="chooseImages"
+        >
+          <view class="add-inner">
+            <text class="add-plus">+</text>
+            <text class="add-label">添加图片</text>
+          </view>
         </view>
       </view>
     </view>
   </view>
 
-  <button class="primary-btn submit" bindtap="submit" loading="{{submitting}}">发布</button>
+  <!-- 隐私与位置卡片 -->
+  <view class="privacy-card">
+    <view class="privacy-header">
+      <text class="card-title">🔒 隐私与位置</text>
+    </view>
+
+    <view class="privacy-body">
+      <view class="privacy-row" catchtap="openVisibility">
+        <text class="privacy-row-label">可见范围</text>
+        <view class="privacy-row-value">
+          <text class="privacy-row-value-text">{{visibilityLabel}}</text>
+          <view class="chevron"></view>
+        </view>
+      </view>
+
+      <view class="privacy-divider" />
+
+      <view class="privacy-row location-privacy-row">
+        <text class="privacy-row-label">在地图页上显示</text>
+        <view class="location-toggle" bindtap="toggleShowLocation">
+          <view class="toggle-track {{showLocation ? 'on' : ''}}">
+            <view class="toggle-thumb {{showLocation ? 'on' : ''}}" />
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 可见范围下拉 -->
+  <view class="sheet-mask {{visibilityOpen ? 'show' : ''}}" bindtap="closeVisibility"></view>
+  <view class="vis-sheet {{visibilityOpen ? 'show' : ''}}" catchtap="noop">
+    <view class="sheet-grabber"></view>
+    <view class="vis-sheet-title">选择可见范围</view>
+    <view class="vis-scroll">
+      <view class="vis-options">
+        <view
+          wx:for="{{visibilityOptions}}"
+          wx:key="value"
+          class="vis-option {{form.visibility === item.value ? 'on' : ''}}"
+          data-value="{{item.value}}"
+          catchtap="selectVisibility"
+        >
+          <text class="vis-option-label">{{item.label}}</text>
+          <text class="vis-option-desc">{{item.desc}}</text>
+          <view wx:if="{{form.visibility === item.value}}" class="vis-check">✓</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 发布按钮 -->
+  <view class="submit-section">
+    <button
+      class="submit-btn"
+      bindtap="submit"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+    >
+      <text wx:if="{{!submitting}}" class="submit-text">发布 ing</text>
+      <text wx:else class="submit-text">发布中...</text>
+    </button>
+  </view>
 </view>

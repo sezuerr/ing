@@ -6,90 +6,151 @@ Page({
   data: {
     post: null,
     comments: [],
+    likers: [],
     reportVisible: false,
     reportReasons: REPORT_REASONS,
-    reportPost: null
+    reportPost: null,
+    isMine: false,
+    authorName: "",
+    authorAvatar: "",
+    avatarText: "",
+    timeText: "",
+    tabActive: "likes"
   },
 
   async onLoad(options) {
     var id = options.id;
     var app = getApp();
     var cu = app && app.globalData && app.globalData.currentUser;
-    if (!cu || !cu._id) {
+    if (!cu || !(cu.openid || cu._id)) {
       cu = mock.currentUser;
     }
-    var currentUserId = cu && cu._id ? cu._id : "";
-    wx.showLoading({ title: "加载中" });
-    try {
-      var result = await api.getPostDetail(id);
-      var post = result.post || {};
-      var comments = result.comments || [];
-      if (!post.matched) post.matched = post.matched || false;
-      this.setData({ post, comments, currentUserId: currentUserId });
-    } catch (e) {
-      wx.showToast({ title: "加载失败", icon: "none" });
-    } finally {
-      wx.hideLoading();
-    }
-  },
+    var currentUserId = (cu && cu.openid) || (cu && cu._id) || "";
+    var result = await api.getPostDetail(id);
+    var post = result.post || {};
+    var comments = result.comments || [];
+    if (!post.matched) post.matched = post.matched || false;
+    var isMine = currentUserId && post.authorId === currentUserId;
+    var authorName = (post.author && post.author.nickName) || (cu && cu.nickName) || "我";
+    var authorAvatar = (post.author && post.author.avatarUrl) || (cu && cu.avatarUrl) || "";
+    var avatarText = authorName.slice(0, 1).toUpperCase();
+    var timeText = post.createdAt ? this.fromNow(post.createdAt) : "";
 
-  onLike(event) {
-    var post = event.detail.post;
-    if (!post || !post._id) return;
-
-    var updatedPost = {};
-    for (var k in this.data.post) {
-      updatedPost[k] = this.data.post[k];
-    }
-    updatedPost.likedByMe = true;
-    if (typeof updatedPost.likeCount === "number") {
-      updatedPost.likeCount += 1;
-    }
-    this.setData({ post: updatedPost });
-  },
-
-  onMatch(event) {
-    var post = event.detail.post;
-    if (!post) return;
-    var updatedPost = {};
-    for (var k in this.data.post) {
-      updatedPost[k] = this.data.post[k];
-    }
-    updatedPost.matched = true;
-    updatedPost.likedByMe = true;
-    if (!updatedPost.author) {
-      updatedPost.author = {};
-    }
-    updatedPost.author.isFriend = true;
-    this.setData({ post: updatedPost });
-  },
-
-  async onReply(event) {
-    var data = event.detail;
-    var content = data.content;
-    if (!content) return;
-    wx.showLoading({ title: "发送中" });
-    try {
-      var result = await api.sendPrivateReply({ postId: data.post._id, content: content });
-      if (result.__fromFallback) {
-        wx.showToast({ title: "网络异常，请重试", icon: "none" });
-        return;
+    var likers = [];
+    if (isMine && post._id) {
+      try {
+        var likersResult = await api.getPostLikers(post._id);
+        likers = (likersResult && likersResult.likers) || [];
+      } catch (e) {
+        console.warn("获取点亮列表失败", e);
       }
-      wx.showToast({ title: "已发送", icon: "success" });
-      var newComment = {
-        _id: "local_" + Date.now(),
-        fromUser: { nickName: "", avatarUrl: "" },
-        content: content,
-        createdAt: Date.now()
-      };
-      var comments = this.data.comments.slice();
-      comments.unshift(newComment);
-      this.setData({ comments: comments });
-    } catch (e) {
-      wx.showToast({ title: "发送失败，请重试", icon: "none" });
-    } finally {
-      wx.hideLoading();
     }
+
+    this.setData({
+      post, comments, currentUserId, likers,
+      isMine, authorName, authorAvatar, avatarText, timeText,
+      myNickName: cu.nickName || "",
+      myAvatarUrl: cu.avatarUrl || ""
+    });
+
+    // 转换云存储图片链接
+    this.resolveDetailImages(post, comments, likers);
+  },
+
+  async resolveDetailImages(post, comments, likers) {
+    var allUrls = [];
+    if (post.author && post.author.avatarUrl) allUrls.push(post.author.avatarUrl);
+    if (post.imageUrls && post.imageUrls.length) allUrls = allUrls.concat(post.imageUrls);
+    if (comments) {
+      comments.forEach(function(c) {
+        if (c.fromUser && c.fromUser.avatarUrl) allUrls.push(c.fromUser.avatarUrl);
+      });
+    }
+    if (likers) {
+      likers.forEach(function(l) {
+        if (l.fromUser && l.fromUser.avatarUrl) allUrls.push(l.fromUser.avatarUrl);
+      });
+    }
+    if (!allUrls.length) return;
+    allUrls = allUrls.filter(function(u, i) { return u && allUrls.indexOf(u) === i; });
+    var resolved = await api.resolveImageUrls(allUrls);
+    var map = {};
+    allUrls.forEach(function(u, i) { map[u] = resolved[i]; });
+    if (post.author && post.author.avatarUrl && map[post.author.avatarUrl]) post.author.avatarUrl = map[post.author.avatarUrl];
+    if (post.imageUrls && post.imageUrls.length) post.imageUrls = post.imageUrls.map(function(u) { return map[u] || u; });
+    if (comments) {
+      comments.forEach(function(c) {
+        if (c.fromUser && c.fromUser.avatarUrl && map[c.fromUser.avatarUrl]) c.fromUser.avatarUrl = map[c.fromUser.avatarUrl];
+      });
+    }
+    if (likers) {
+      likers.forEach(function(l) {
+        if (l.fromUser && l.fromUser.avatarUrl && map[l.fromUser.avatarUrl]) l.fromUser.avatarUrl = map[l.fromUser.avatarUrl];
+      });
+    }
+    this.setData({ post: post, comments: comments, likers: likers });
+  },
+
+  switchTab(e) {
+    var tab = e.currentTarget.dataset.tab;
+    this.setData({ tabActive: tab });
+  },
+
+  openLikerProfile(e) {
+    var liker = e.currentTarget.dataset.liker;
+    if (!liker || !liker.isFriend) return;
+    var userId = liker._id || "";
+    if (!userId) return;
+    wx.navigateTo({ url: "/pages/user-profile/index?id=" + userId });
+  },
+
+  getLikerDisplay(liker) {
+    if (!liker) return { name: "匿名", avatar: "", isFriend: false };
+    var fromUser = liker.fromUser || {};
+    if (fromUser.isFriend && fromUser.nickName) {
+      return { name: fromUser.nickName, avatar: fromUser.avatarUrl || "", isFriend: true };
+    }
+    return { name: "匿名同学", avatar: "", isFriend: false };
+  },
+
+  fromNow(ts) {
+    var diff = Date.now() - new Date(ts).getTime();
+    var mins = Math.floor(diff / 60000);
+    if (mins < 1) return "刚刚";
+    if (mins < 60) return mins + " 分钟前";
+    var hours = Math.floor(mins / 60);
+    if (hours < 24) return hours + " 小时前";
+    var days = Math.floor(hours / 24);
+    if (days < 30) return days + " 天前";
+    return Math.floor(days / 30) + " 个月前";
+  },
+
+  // post-card 组件事件转发
+  async onLike(event) {
+    var post = event.detail.post;
+    try {
+      var result = await api.likePost(post._id);
+      var matched = result && result.matched;
+      if (matched) {
+        post.matched = true;
+        post.likedByMe = true;
+        this.setData({ post: post });
+        wx.showToast({ title: "配对成功，可以聊天了", icon: "none" });
+      } else {
+        wx.showToast({ title: "已点亮 · 等待回应", icon: "none" });
+      }
+    } catch (e) {
+      console.error("点亮失败", e);
+      wx.showToast({ title: "网络异常，请重试", icon: "none" });
+    }
+  },
+
+  onReply(event) {
+    var post = event.detail.post;
+    var content = event.detail.content;
+    api.sendPrivateReply({ postId: post._id, content: content }).then(function() {
+      wx.showToast({ title: "已发送", icon: "success" });
+    });
   },
 
   onGoChat(event) {
@@ -110,16 +171,9 @@ Page({
     var reasonVal = event.currentTarget.dataset.value;
     var post = this.data.reportPost;
     if (!post) return;
-    wx.showLoading({ title: "提交中" });
-    try {
-      await api.reportPost({ postId: post._id, reason: reasonVal });
-      wx.showToast({ title: reasonVal === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
-      this.setData({ reportVisible: false });
-    } catch (e) {
-      wx.showToast({ title: "提交失败，请重试", icon: "none" });
-    } finally {
-      wx.hideLoading();
-    }
+    await api.reportPost({ postId: post._id, reason: reasonVal });
+    wx.showToast({ title: reasonVal === "not_interested" ? "已减少类似内容" : "已提交", icon: "none" });
+    this.setData({ reportVisible: false });
   },
 
   noop() {},
