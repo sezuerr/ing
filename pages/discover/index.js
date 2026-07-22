@@ -165,7 +165,21 @@ Page({
         });
       }
     });
-    this.setData({ posts: posts });
+
+    // 卡片渲染的是 currentPost / nextPost 这两个独立绑定，而不是 posts 数组本身。
+    // 只更新 posts 的话，可见卡片仍持有旧的 cloud:// 链接。这里按 _id 把解析后的
+    // 对象同步回 currentPost / nextPost（用 _id 匹配可避免异步期间用户已划走导致错位）。
+    var d = this.data;
+    var updated = { posts: posts };
+    if (d.currentPost) {
+      var cp = posts.filter(function(p) { return p._id === d.currentPost._id; })[0];
+      if (cp) updated.currentPost = cp;
+    }
+    if (d.nextPost) {
+      var np = posts.filter(function(p) { return p._id === d.nextPost._id; })[0];
+      if (np) updated.nextPost = np;
+    }
+    this.setData(updated);
   },
 
   openFilter() {
@@ -267,7 +281,7 @@ Page({
 
   goChat(event) {
     var post = event.detail.post;
-    wx.navigateTo({ url: "/pages/chat/index?id=" + (post.conversationId || "conv_mock") + "&name=" + encodeURIComponent(post.author.nickName || "同学") });
+    wx.navigateTo({ url: "/pages/chat/index?id=" + (post.conversationId || "conv_mock") + "&peerId=" + (post.authorId || "") + "&name=" + encodeURIComponent(post.author.nickName || "同学") + "&avatar=" + encodeURIComponent((post.author && post.author.avatarUrl) || "") });
   },
 
   async replyPost(event) {

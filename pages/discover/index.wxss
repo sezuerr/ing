@@ -13,7 +13,7 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: calc(96rpx + env(safe-area-inset-top)) 28rpx calc(148rpx + env(safe-area-inset-bottom));
+  padding: calc(56rpx + env(safe-area-inset-top)) 28rpx calc(148rpx + env(safe-area-inset-bottom));
   background: linear-gradient(160deg, #FFF5E1 0%, #FFD700 35%, #FFECB3 60%, #FFB6C1 100%);
   height: 100vh;
   overflow: hidden;

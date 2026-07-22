@@ -14,10 +14,13 @@
             <text wx:else class="mine-avatar-text">{{avatarText}}</text>
           </view>
           <text class="mine-nickname">{{authorName}}</text>
+          <view class="mine-delete-btn" catchtap="onDeletePost">
+            <image class="mine-delete-icon" src="/icons/delete-bin-7-line.svg" mode="aspectFit" />
+          </view>
         </view>
 
         <text class="mine-body">{{post.body}}</text>
-        <scroll-view wx:if="{{post.imageUrls && post.imageUrls.length > 1}}" scroll-x class="images">
+        <scroll-view wx:if="{{post.imageUrls && post.imageUrls.length > 0}}" scroll-x class="images">
           <image wx:for="{{post.imageUrls}}" wx:key="*this" class="image" mode="aspectFill" src="{{item}}" />
         </scroll-view>
 

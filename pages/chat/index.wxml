@@ -6,7 +6,7 @@
       </view>
       <view class="nav-peer" bindtap="openProfile">
         <view class="nav-avatar">
-          <image wx:if="{{peerAvatar}}" src="{{peerAvatar}}" mode="aspectFill" />
+          <image wx:if="{{peerAvatar}}" src="{{peerAvatar}}" mode="aspectFill" binderror="onAvatarError" />
           <text wx:else>{{peerAvatarText}}</text>
         </view>
         <text class="nav-name">{{peerName}}</text>

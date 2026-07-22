@@ -1,5 +1,8 @@
 <view class="item" bindtap="open">
-  <view class="avatar" catchtap="openAvatar">{{avatarText}}</view>
+  <view class="avatar" catchtap="openAvatar">
+    <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" />
+    <text wx:else>{{avatarText}}</text>
+  </view>
   <view class="body">
     <view class="topline">
       <text class="title">{{item.title}}</text>

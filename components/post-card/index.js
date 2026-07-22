@@ -126,7 +126,7 @@ Component({
       if (!content) return;
       this.setData({ draft: "" });
 
-      // 修复: 乐观更新后触发 reply 事件，传递包含新评论的 post，确保页面能同步到最新状态
+      // 乐观更新：立即把新评论加到卡片上，不需要刷新就能看到
       var oldPost = this.data.post;
       var isAuthorComment = this.data.isMine;
       var nick = isAuthorComment ? (oldPost.author && oldPost.author.nickName || '我') : (this.data.myNickName || '我');
@@ -146,8 +146,6 @@ Component({
       for (var k in oldPost) { newPost[k] = oldPost[k]; }
       newPost.comments = [newComment].concat(oldPost.comments || []);
       this.setData({ post: newPost });
-      // 修复: 使用乐观更新后的 newPost 触发事件，让页面拿到含最新评论的完整 post 对象
-      this.triggerEvent("reply", { post: newPost, content });
     },
 
     previewImage(event) {

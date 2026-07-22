@@ -13,6 +13,7 @@ Component({
       const name = item && item.actor && item.actor.nickName;
       this.setData({
         avatarText: (name || "匿").slice(0, 1).toUpperCase(),
+        avatarUrl: (item && item.actor && item.actor.avatarUrl) || "",
         revealed: Boolean(name),
         timeText: item && item.createdAt ? fromNow(item.createdAt) : ""
       });
@@ -21,6 +22,7 @@ Component({
 
   data: {
     avatarText: "匿",
+    avatarUrl: "",
     revealed: false,
     timeText: ""
   },

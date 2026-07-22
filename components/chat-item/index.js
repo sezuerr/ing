@@ -18,12 +18,16 @@ Component({
   observers: {
     item(item) {
       const name = item && item.peer && item.peer.nickName;
-      this.setData({ avatarText: (name || "同").slice(0, 1).toUpperCase() });
+      this.setData({
+        avatarText: (name || "同").slice(0, 1).toUpperCase(),
+        avatarUrl: (item && item.peer && item.peer.avatarUrl) || ""
+      });
     }
   },
 
   data: {
     avatarText: "同",
+    avatarUrl: "",
     offset: 0
   },
 
@@ -58,6 +62,11 @@ Component({
     unmatch() {
       this.setData({ offset: 0 });
       this.triggerEvent("unmatch", { item: this.data.item });
+    },
+
+    // 头像加载失败（临时链接过期等）回退到首字占位
+    onAvatarError() {
+      this.setData({ avatarUrl: "" });
     }
   }
 });

@@ -106,11 +106,8 @@ function markNotificationsRead(payload) {
 }
 
 function getUserProfile(payload) {
-  const posts = mock.posts.concat(mock.myPosts).filter((item) => item.authorId === payload.userId);
-  const fallbackUser = payload.userId === mock.currentUser.openid
-    ? mock.currentUser
-    : { nickName: "同学", avatarUrl: "", bio: "", universityName: "", stats: { likeCount: 0, commentCount: 0 } };
-  return callApi("getUserProfile", payload, { user: fallbackUser, posts });
+  // 不使用 mock 帖子兜底：避免删帖后云端异常时返回旧数据，给用户造成困惑
+  return callApi("getUserProfile", payload, { user: null, posts: [] });
 }
 
 function getConversations() {
@@ -131,7 +128,7 @@ function unmatchUser(payload) {
 }
 
 function getMyPosts() {
-  return callApi("getMyPosts", {}, { posts: mock.myPosts });
+  return callApi("getMyPosts", {}, { posts: [] });
 }
 
 function getPostDetail(postId) {
@@ -144,6 +141,17 @@ function getPostDetail(postId) {
 function getPostLikers(postId) {
   const likers = (mock.postLikers || []).filter((item) => item.postId === postId);
   return callApi("getPostLikers", { postId }, { likers });
+}
+
+function deletePost(postId) {
+  console.log("[deletePost] 开始删除帖子:", postId);
+  return callApiWrite("deletePost", { postId }).then(function(result) {
+    console.log("[deletePost] 云端返回:", JSON.stringify(result));
+    return result;
+  }).catch(function(err) {
+    console.error("[deletePost] 删除失败:", err);
+    throw err;
+  });
 }
 
 function getUniversities() {
@@ -189,6 +197,7 @@ module.exports = {
   getMyPosts,
   getPostDetail,
   getPostLikers,
+  deletePost,
   getUniversities,
   resolveImageUrls
 };

@@ -1,6 +1,6 @@
 .detail-page {
   background: #f2f1ec;
-  padding-top: calc(120rpx + env(safe-area-inset-top));
+  padding-top: calc(80rpx + env(safe-area-inset-top));
 }
 
 .back-row {
@@ -72,9 +72,28 @@
 }
 
 .mine-nickname {
+  flex: 1;
   font-size: 32rpx;
   font-weight: 700;
   color: #15130d;
+}
+
+.mine-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56rpx;
+  height: 56rpx;
+  flex: 0 0 auto;
+}
+
+.mine-delete-btn:active {
+  opacity: 0.45;
+}
+
+.mine-delete-icon {
+  width: 40rpx;
+  height: 40rpx;
 }
 
 .title-row {

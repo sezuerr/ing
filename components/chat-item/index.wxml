@@ -8,7 +8,10 @@
     bindtouchend="touchEnd"
     bindtap="open"
   >
-    <view class="avatar">{{avatarText}}</view>
+    <view class="avatar">
+      <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill" binderror="onAvatarError" />
+      <text wx:else>{{avatarText}}</text>
+    </view>
     <view class="body">
       <view class="topline">
         <text class="name">{{item.peer.nickName || '同学'}}</text>

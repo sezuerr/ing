@@ -229,9 +229,11 @@ Page({
     this.setData({ feedList: feedList });
     this.generateMapMarkers();
 
+    // 优先使用完整帖子对象，mock 数据则构造简化版
     var post;
     if (data._post) {
       post = data._post;
+      // 转换图片链接
       this.resolvePopoverImages(post);
     } else {
       post = {
@@ -268,17 +270,13 @@ Page({
     var allUrls = [];
     if (post.author && post.author.avatarUrl) allUrls.push(post.author.avatarUrl);
     if (post.imageUrls && post.imageUrls.length) allUrls = allUrls.concat(post.imageUrls);
-    if (!allUrls.length) { this._popoverSettled = true; return; }
+    if (!allUrls.length) return;
     var resolved = await api.resolveImageUrls(allUrls);
     var map = {};
     allUrls.forEach(function(u, i) { map[u] = resolved[i]; });
     if (post.author && post.author.avatarUrl && map[post.author.avatarUrl]) post.author.avatarUrl = map[post.author.avatarUrl];
     if (post.imageUrls && post.imageUrls.length) post.imageUrls = post.imageUrls.map(function(u) { return map[u] || u; });
-    // 修复: 仅在 popover 仍开启时更新图片 URL，避免异步结果覆盖已乐观更新的 comments
-    if (this.data.showPopover && this.data.popoverData && this.data.popoverData.post) {
-      this.setData({ popoverData: { post: post } });
-    }
-    this._popoverSettled = true;
+    this.setData({ popoverData: { post: post } });
   },
 
   closePopover() {
@@ -308,24 +306,15 @@ Page({
     }
   },
 
-  // 修复: 收到组件回复事件后同步更新页面级别 popoverData，确保响应式状态不丢失
   onPopoverReply(e) {
-    var repliedPost = e.detail.post;
+    var post = e.detail.post;
     var content = e.detail.content;
-    // 修复: 将组件乐观更新后的 post 同步回页面，并触发 toast 反馈
-    if (repliedPost && this.data.popoverData) {
-      this.setData({ popoverData: { post: repliedPost } });
-    }
-    api.sendPrivateReply({ postId: repliedPost._id, content: content }).then(function() {
-      wx.showToast({ title: "已发送", icon: "success" });
-    }).catch(function(err) {
-      wx.showToast({ title: "发送失败，请重试", icon: "none" });
-    });
+    api.sendPrivateReply({ postId: post._id, content: content });
   },
 
   onPopoverGoChat(e) {
     var post = e.detail.post;
-    wx.navigateTo({ url: "/pages/chat/index?peerId=" + post.authorId });
+    wx.navigateTo({ url: "/pages/chat/index?peerId=" + post.authorId + "&name=" + encodeURIComponent((post.author && post.author.nickName) || "同学") + "&avatar=" + encodeURIComponent((post.author && post.author.avatarUrl) || "") });
   },
 
   onPopoverReport(e) {

@@ -63,8 +63,29 @@ Page({
       peerAvatarText: (peerName || "同").slice(0, 1).toUpperCase(),
       ...this.getNavMetrics()
     });
+    // 跳转参数里的头像可能是未解析的 cloud:// 文件 ID（如从地图/详情页进来）。
+    // 不能依赖 <image> 原生解析 cloud://（冷启动会退化成本地路径 500），这里主动转成 https。
+    this.resolvePeerAvatar(peerAvatar);
     this.loadMessages();
     this.startPolling();
+  },
+
+  async resolvePeerAvatar(avatar) {
+    if (!avatar || avatar.indexOf("cloud://") !== 0) return;
+    try {
+      const resolved = await api.resolveImageUrls([avatar]);
+      if (resolved && resolved[0] && resolved[0] !== avatar) {
+        this.setData({ peerAvatar: resolved[0] });
+      }
+    } catch (error) {
+      // 解析失败就走首字占位，不留裂图
+      this.setData({ peerAvatar: "" });
+    }
+  },
+
+  // 图片加载失败（链接过期/无权限）时清空，回退到首字占位
+  onAvatarError() {
+    this.setData({ peerAvatar: "" });
   },
 
   onUnload() {

@@ -36,6 +36,59 @@ function sortPair(a, b) {
   return [a, b].sort().join("_");
 }
 
+// 递归将响应数据中的 cloud:// 文件 ID 批量转为临时 HTTPS 链接。
+// 云函数有管理员权限，不受存储安全规则限制。
+async function resolveFileUrlsInData(data) {
+  if (!data) return;
+
+  const urls = new Set();
+  (function collect(obj) {
+    if (!obj) return;
+    // 数组元素可能是原始字符串，不能靠 typeof obj !== "object" 跳过
+    if (typeof obj === "string") {
+      if (obj.startsWith("cloud://")) urls.add(obj);
+      return;
+    }
+    if (typeof obj !== "object") return;
+    if (Array.isArray(obj)) { obj.forEach(collect); return; }
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (typeof val === "string" && val.startsWith("cloud://")) urls.add(val);
+      else if (val && typeof val === "object") collect(val);
+    }
+  })(data);
+
+  if (!urls.size) return;
+
+  const fileIDs = [...urls];
+  const batches = [];
+  for (let i = 0; i < fileIDs.length; i += 50) batches.push(fileIDs.slice(i, i + 50));
+
+  const results = await Promise.all(batches.map(b => cloud.getTempFileURL({ fileList: b })));
+  const map = {};
+  for (const r of results) {
+    for (const f of (r.fileList || [])) {
+      if (f.tempFileURL) map[f.fileID] = f.tempFileURL;
+    }
+  }
+
+  (function replace(obj) {
+    if (!obj || typeof obj !== "object") return;
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) {
+        if (typeof obj[i] === "string" && map[obj[i]]) obj[i] = map[obj[i]];
+        else if (obj[i] && typeof obj[i] === "object") replace(obj[i]);
+      }
+      return;
+    }
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (typeof val === "string" && map[val]) obj[key] = map[val];
+      else if (val && typeof val === "object") replace(val);
+    }
+  })(data);
+}
+
 async function getUserByOpenId(openid) {
   const result = await db.collection(C.users).where({ openid }).limit(1).get();
   return result.data[0] || null;
@@ -229,8 +282,10 @@ async function getDiscoverFeed(openid, payload) {
   });
 
   const topicResult = await db.collection(C.topics).where({ status: "active" }).orderBy("date", "desc").limit(1).get();
+  const sliced = enriched.slice(0, 30);
+  await resolveFileUrlsInData(sliced);
   return ok({
-    posts: enriched.slice(0, 30),
+    posts: sliced,
     dailyTopic: topicResult.data[0] || null
   });
 }
@@ -573,6 +628,7 @@ async function getNotifications(openid, payload = {}) {
       actor: actor ? { nickName: actor.nickName, avatarUrl: actor.avatarUrl } : null
     });
   }
+  await resolveFileUrlsInData(notifications);
   return ok({ notifications });
 }
 
@@ -603,7 +659,7 @@ async function getUserProfile(openid, payload = {}) {
     .limit(50)
     .get();
 
-  return ok({
+  const result = {
     user: {
       nickName: user.nickName,
       avatarUrl: user.avatarUrl,
@@ -612,7 +668,9 @@ async function getUserProfile(openid, payload = {}) {
       stats: user.stats
     },
     posts: postsResult.data
-  });
+  };
+  await resolveFileUrlsInData(result);
+  return ok(result);
 }
 
 async function getConversations(openid) {
@@ -632,6 +690,7 @@ async function getConversations(openid) {
       unreadCount: item.unreadMap && item.unreadMap[openid] ? item.unreadMap[openid] : 0
     });
   }
+  await resolveFileUrlsInData(conversations);
   return ok({ conversations });
 }
 
@@ -743,11 +802,13 @@ async function markPostAction(openid, payload) {
 
 async function getMyPosts(openid) {
   const result = await db.collection(C.posts)
-    .where({ authorId: openid })
+    .where({ authorId: openid, status: "visible" })
     .orderBy("createdAt", "desc")
     .limit(50)
     .get();
-  return ok({ posts: result.data });
+  const posts = result.data;
+  await resolveFileUrlsInData(posts);
+  return ok({ posts });
 }
 
 async function getPostDetail(openid, payload) {
@@ -772,6 +833,8 @@ async function getPostDetail(openid, payload) {
         } : { nickName: "好友", avatarUrl: "" }
       });
     }
+    await resolveFileUrlsInData(post);
+    await resolveFileUrlsInData(enrichedComments);
     return ok({ post, comments: enrichedComments });
   }
 
@@ -834,6 +897,7 @@ async function getPostDetail(openid, payload) {
     comments: visibleComments
   };
 
+  await resolveFileUrlsInData(enrichedPost);
   return ok({ post: enrichedPost, comments: visibleComments });
 }
 
@@ -865,7 +929,38 @@ async function getPostLikers(openid, payload) {
       createdAt: like.createdAt
     });
   }
+  await resolveFileUrlsInData(likers);
   return ok({ likers });
+}
+
+async function deletePost(openid, payload) {
+  const postId = payload.postId;
+  console.log("[deletePost] 收到删除请求 openid:", openid, "postId:", postId);
+  if (!postId) return fail("缺少帖子 ID");
+
+  const postResult = await db.collection(C.posts).doc(postId).get();
+  const post = postResult.data;
+  console.log("[deletePost] 查到的帖子:", post ? { _id: post._id, authorId: post.authorId, status: post.status } : null);
+  if (!post) return fail("帖子不存在", "NOT_FOUND");
+  if (post.authorId !== openid) return fail("无权删除", "FORBIDDEN");
+
+  // 尝试两种方式确保删除生效
+  try {
+    // 方式 1：软删除 — 标记 status 为 deleted
+    const updateResult = await db.collection(C.posts).doc(postId).update({
+      data: { status: "deleted", updatedAt: now() }
+    });
+    console.log("[deletePost] update 结果:", JSON.stringify(updateResult));
+
+    // 立即回查确认状态已改
+    const verify = await db.collection(C.posts).doc(postId).get();
+    console.log("[deletePost] 回查状态:", verify.data ? verify.data.status : "未找到");
+  } catch (e) {
+    console.error("[deletePost] 删除异常:", e);
+    return fail("删除失败: " + (e.message || "未知错误"), "INTERNAL_ERROR");
+  }
+
+  return ok({ deleted: true });
 }
 
 async function getUniversities() {
@@ -893,6 +988,7 @@ const handlers = {
   getMyPosts,
   getPostDetail,
   getPostLikers,
+  deletePost,
   getUniversities
 };
 

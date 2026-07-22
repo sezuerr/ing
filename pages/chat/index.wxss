@@ -11,7 +11,7 @@
   flex: 0 0 auto;
   flex-direction: column;
   justify-content: center;
-  padding-bottom: 12rpx;
+  padding-bottom: 0;
   background: #fafaf7;
   border-bottom: 2rpx solid rgba(21, 19, 13, 0.08);
 }
@@ -81,7 +81,7 @@
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
-  padding: 32rpx 28rpx 24rpx;
+  padding: 16rpx 28rpx 24rpx;
 }
 
 .date-divider,
