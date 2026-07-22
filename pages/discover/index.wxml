@@ -40,7 +40,7 @@
               bindtouchstart="{{swipe.touchStart}}"
               bindtouchmove="{{swipe.touchMove}}"
               bindtouchend="{{swipe.touchEnd}}">
-          <post-card post="{{currentPost}}" currentUserId="{{currentUserId}}" bind:like="likePost" bind:reply="replyPost" bind:report="reportPost" bind:gochat="goChat" />
+          <post-card post="{{currentPost}}" currentUserId="{{currentUserId}}" myNickName="{{myNickName}}" myAvatarUrl="{{myAvatarUrl}}" bind:like="likePost" bind:reply="replyPost" bind:report="reportPost" bind:gochat="goChat" />
         </view>
       </view>
       <view class="swipe-tip">左划看下一张 · 不可回退</view>

@@ -76,7 +76,11 @@ Page({
       cu = mock.currentUser;
     }
     if (cu && (cu.openid || cu._id)) {
-      this.setData({ currentUserId: cu.openid || cu._id });
+      this.setData({
+        currentUserId: cu.openid || cu._id,
+        myNickName: cu.nickName || "",
+        myAvatarUrl: cu.avatarUrl || ""
+      });
     }
     this.setTab();
     this.loadFeed();
@@ -130,6 +134,52 @@ Page({
       currentPost: posts[0] || null,
       nextPost: posts[1] || null
     });
+
+    // 转换云存储图片链接为临时链接
+    this.resolvePostImages(posts);
+  },
+
+  async resolvePostImages(posts) {
+    if (!posts || !posts.length) return;
+    var allUrls = [];
+    posts.forEach(function(p) {
+      if (p.author && p.author.avatarUrl) allUrls.push(p.author.avatarUrl);
+      if (p.imageUrls && p.imageUrls.length) allUrls = allUrls.concat(p.imageUrls);
+      if (p.comments) {
+        p.comments.forEach(function(c) {
+          if (c.fromUser && c.fromUser.avatarUrl) allUrls.push(c.fromUser.avatarUrl);
+        });
+      }
+    });
+    if (!allUrls.length) return;
+    allUrls = allUrls.filter(function(u, i) { return u && allUrls.indexOf(u) === i; });
+    var resolved = await api.resolveImageUrls(allUrls);
+    var map = {};
+    allUrls.forEach(function(u, i) { map[u] = resolved[i]; });
+    posts.forEach(function(p) {
+      if (p.author && p.author.avatarUrl && map[p.author.avatarUrl]) p.author.avatarUrl = map[p.author.avatarUrl];
+      if (p.imageUrls && p.imageUrls.length) p.imageUrls = p.imageUrls.map(function(u) { return map[u] || u; });
+      if (p.comments) {
+        p.comments.forEach(function(c) {
+          if (c.fromUser && c.fromUser.avatarUrl && map[c.fromUser.avatarUrl]) c.fromUser.avatarUrl = map[c.fromUser.avatarUrl];
+        });
+      }
+    });
+
+    // 卡片渲染的是 currentPost / nextPost 这两个独立绑定，而不是 posts 数组本身。
+    // 只更新 posts 的话，可见卡片仍持有旧的 cloud:// 链接。这里按 _id 把解析后的
+    // 对象同步回 currentPost / nextPost（用 _id 匹配可避免异步期间用户已划走导致错位）。
+    var d = this.data;
+    var updated = { posts: posts };
+    if (d.currentPost) {
+      var cp = posts.filter(function(p) { return p._id === d.currentPost._id; })[0];
+      if (cp) updated.currentPost = cp;
+    }
+    if (d.nextPost) {
+      var np = posts.filter(function(p) { return p._id === d.nextPost._id; })[0];
+      if (np) updated.nextPost = np;
+    }
+    this.setData(updated);
   },
 
   openFilter() {
@@ -175,33 +225,63 @@ Page({
   },
 
   nextPost() {
-    var nextIndex = this.data.currentIndex + 1;
     var posts = this.data.posts;
-    if (!posts.length) return;
-    // 循环：翻完回到第一张
-    var wrappedIndex = nextIndex % posts.length;
-    var nextWrappedIndex = (nextIndex + 1) % posts.length;
+    var currentPost = this.data.currentPost;
+    if (!posts.length || !currentPost) return;
+
+    // 从本地数组中移除刚刚划走的帖子
+    var remaining = posts.filter(function(p) {
+      return p._id !== currentPost._id;
+    });
+
+    if (remaining.length === 0) {
+      // 全部划完，显示空状态；下次 onShow 或切范围会重新 loadFeed
+      this.setData({
+        posts: [],
+        currentIndex: 0,
+        currentPost: null,
+        nextPost: null
+      });
+      return;
+    }
+
     this.setData({
-      currentIndex: wrappedIndex,
-      currentPost: posts[wrappedIndex] || null,
-      nextPost: posts[nextWrappedIndex] || null
+      posts: remaining,
+      currentIndex: 0,
+      currentPost: remaining[0],
+      nextPost: remaining[1] || null
     });
   },
 
   async likePost(event) {
     var post = event.detail.post;
-    var result = await api.likePost(post._id);
-    var matched = result && result.matched;
-    if (matched) {
-      post.matched = true;
-      this.setData({ currentPost: post });
+    try {
+      var result = await api.likePost(post._id);
+      var matched = result && result.matched;
+      if (matched) {
+        // 同时更新 currentPost 引用和 posts 数组中的原始对象
+        post.matched = true;
+        post.likedByMe = true;
+        post.conversationId = result.conversationId || post.conversationId;
+        var posts = this.data.posts;
+        var idx = this.data.currentIndex;
+        if (posts[idx] && posts[idx]._id === post._id) {
+          posts[idx].matched = true;
+          posts[idx].likedByMe = true;
+          posts[idx].conversationId = post.conversationId;
+        }
+        this.setData({ currentPost: post, posts: posts });
+      }
+      wx.showToast({ title: matched ? "配对成功！解锁聊天" : "已点亮 · 等待回应", icon: "none" });
+    } catch (e) {
+      console.error("点亮失败", e);
+      wx.showToast({ title: "网络异常，请重试", icon: "none" });
     }
-    wx.showToast({ title: matched ? "配对成功！解锁聊天" : "已点亮 · 等待回应", icon: "none" });
   },
 
   goChat(event) {
     var post = event.detail.post;
-    wx.navigateTo({ url: "/pages/chat/index?id=" + (post.conversationId || "conv_mock") + "&name=" + encodeURIComponent(post.author.nickName || "同学") });
+    wx.navigateTo({ url: "/pages/chat/index?id=" + (post.conversationId || "conv_mock") + "&peerId=" + (post.authorId || "") + "&name=" + encodeURIComponent(post.author.nickName || "同学") + "&avatar=" + encodeURIComponent((post.author && post.author.avatarUrl) || "") });
   },
 
   async replyPost(event) {

@@ -1,4 +1,4 @@
-const REVEAL_WIDTH = 72;
+let REVEAL_WIDTH = 80; // 约等于 160rpx，组件 attached 时根据屏幕宽度精确计算
 
 Component({
   properties: {
@@ -8,15 +8,26 @@ Component({
     }
   },
 
+  lifetimes: {
+    attached() {
+      var info = wx.getSystemInfoSync();
+      REVEAL_WIDTH = Math.round(160 * info.windowWidth / 750);
+    }
+  },
+
   observers: {
     item(item) {
       const name = item && item.peer && item.peer.nickName;
-      this.setData({ avatarText: (name || "同").slice(0, 1).toUpperCase() });
+      this.setData({
+        avatarText: (name || "同").slice(0, 1).toUpperCase(),
+        avatarUrl: (item && item.peer && item.peer.avatarUrl) || ""
+      });
     }
   },
 
   data: {
     avatarText: "同",
+    avatarUrl: "",
     offset: 0
   },
 

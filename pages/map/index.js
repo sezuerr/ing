@@ -12,7 +12,9 @@ Page({
     markers: [],
     showPopover: false,
     popoverData: null,
-    currentUserId: ""
+    currentUserId: "",
+    myNickName: "",
+    myAvatarUrl: ""
   },
 
   _markerIdCounter: 0,
@@ -23,7 +25,11 @@ Page({
     var app = getApp();
     var cu = app && app.globalData && app.globalData.currentUser;
     if (cu && (cu.openid || cu._id)) {
-      this.setData({ currentUserId: cu.openid || cu._id });
+      this.setData({
+        currentUserId: cu.openid || cu._id,
+        myNickName: cu.nickName || "",
+        myAvatarUrl: cu.avatarUrl || ""
+      });
     }
     this._locateUser();
   },
@@ -153,33 +159,22 @@ Page({
 
       for (var j = 0; j < posts.length; j++) {
         var p = posts[j];
-        var minAgo = Math.floor((Date.now() - new Date(p.createdAt).getTime()) / 60000);
-        var authorName = (p.author && p.author.nickName) || "同学";
 
         feedList.push({
           id: p._id,
-          postId: p._id,
+          _post: p,
           emoji: p.icon || "💡",
           label: p.title ? p.title.slice(0, 6) : "动态",
           landmark: p.landmark || p.universityName || "",
-          body: p.body || "",
-          displayName: authorName,
-          avatarText: authorName.slice(0, 1),
-          timeText: minAgo + "分钟前",
-          universityName: p.universityName || "",
-          likeCount: p.likeCount || 0,
-          createdAt: new Date(p.createdAt).getTime(),
           latitude: p.latitude,
           longitude: p.longitude,
-          scope: "university",
-          isLit: false
+          createdAt: new Date(p.createdAt).getTime()
         });
       }
     } catch (err) {
       console.error("[map] 云端加载失败，使用 mock 兜底", err);
     }
 
-    // 云端无数据时 fallback 到 mock markers
     if (feedList.length === 0) {
       self.seedMockMarkers();
       return;
@@ -205,7 +200,7 @@ Page({
     var data = this._markerDataMap[markerId];
     if (!data) return;
 
-    var postId = data.postId || data.id;
+    var postId = data.id;
     this._burnItem(postId);
 
     var feedList = this.data.feedList.filter(function(item) {
@@ -214,31 +209,53 @@ Page({
     this.setData({ feedList: feedList });
     this.generateMapMarkers();
 
-    var post = {
-      _id: data.postId || data.id,
-      icon: data.emoji || "💡",
-      title: data.label || "",
-      body: data.body || "",
-      likeCount: data.likeCount || 0,
-      commentCount: 0,
-      createdAt: data.createdAt || Date.now(),
-      universityName: data.universityName || "",
-      landmark: data.landmark || "",
-      author: {
-        nickName: data.displayName || "同学",
-        avatarUrl: ""
-      },
-      authorId: data.authorId || "",
-      likedMe: data.likedMe || false,
-      likedByMe: data.isLit || false,
-      matched: data.matched || false,
-      distanceText: data.timeText || ""
-    };
+    // 优先使用完整帖子对象，mock 数据则构造简化版
+    var post;
+    if (data._post) {
+      post = data._post;
+      // 转换图片链接
+      this.resolvePopoverImages(post);
+    } else {
+      post = {
+        _id: data.postId || data.id,
+        icon: data.emoji || "💡",
+        title: data.label || "",
+        body: data.body || "",
+        likeCount: data.likeCount || 0,
+        commentCount: 0,
+        createdAt: data.createdAt || Date.now(),
+        universityName: data.universityName || "",
+        landmark: data.landmark || "",
+        author: {
+          nickName: data.displayName || "同学",
+          avatarUrl: ""
+        },
+        authorId: data.authorId || "",
+        likedMe: data.likedMe || false,
+        likedByMe: data.isLit || false,
+        matched: data.matched || false,
+        distanceText: data.timeText || ""
+      };
+    }
 
     this.setData({
       showPopover: true,
       popoverData: { post: post }
     });
+  },
+
+  async resolvePopoverImages(post) {
+    if (!post) return;
+    var allUrls = [];
+    if (post.author && post.author.avatarUrl) allUrls.push(post.author.avatarUrl);
+    if (post.imageUrls && post.imageUrls.length) allUrls = allUrls.concat(post.imageUrls);
+    if (!allUrls.length) return;
+    var resolved = await api.resolveImageUrls(allUrls);
+    var map = {};
+    allUrls.forEach(function(u, i) { map[u] = resolved[i]; });
+    if (post.author && post.author.avatarUrl && map[post.author.avatarUrl]) post.author.avatarUrl = map[post.author.avatarUrl];
+    if (post.imageUrls && post.imageUrls.length) post.imageUrls = post.imageUrls.map(function(u) { return map[u] || u; });
+    this.setData({ popoverData: { post: post } });
   },
 
   closePopover() {
@@ -247,11 +264,39 @@ Page({
 
   noop() {},
 
-  onPopoverLike(e) {
+  async onPopoverLike(e) {
     var post = e.detail.post;
-    if (post && post._id) {
-      api.likePost(post._id);
+    if (!post || !post._id) return;
+    try {
+      var result = await api.likePost(post._id);
+      if (result && result.matched) {
+        post.matched = true;
+        post.likedByMe = true;
+        this.setData({ popoverData: { post: post } });
+        wx.showToast({ title: "配对成功，可以聊天了", icon: "none" });
+      } else {
+        wx.showToast({ title: "已点亮 · 等待回应", icon: "none" });
+      }
+    } catch (err) {
+      wx.showToast({ title: "网络异常，请重试", icon: "none" });
     }
+  },
+
+  onPopoverReply(e) {
+    var post = e.detail.post;
+    var content = e.detail.content;
+    api.sendPrivateReply({ postId: post._id, content: content });
+  },
+
+  onPopoverGoChat(e) {
+    var post = e.detail.post;
+    wx.navigateTo({ url: "/pages/chat/index?peerId=" + post.authorId + "&name=" + encodeURIComponent((post.author && post.author.nickName) || "同学") + "&avatar=" + encodeURIComponent((post.author && post.author.avatarUrl) || "") });
+  },
+
+  onPopoverReport(e) {
+    var post = e.detail.post;
+    api.reportPost({ postId: post._id, reason: "other" });
+    wx.showToast({ title: "已举报", icon: "none" });
   },
 
   onRegionChange(e) {

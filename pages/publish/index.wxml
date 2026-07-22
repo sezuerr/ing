@@ -89,10 +89,7 @@
       <view class="privacy-divider" />
 
       <view class="privacy-row location-privacy-row">
-        <view class="location-info">
-          <text class="privacy-row-label">在地图页上显示</text>
-          <text class="location-hint">{{locationText}}</text>
-        </view>
+        <text class="privacy-row-label">在地图页上显示</text>
         <view class="location-toggle" bindtap="toggleShowLocation">
           <view class="toggle-track {{showLocation ? 'on' : ''}}">
             <view class="toggle-thumb {{showLocation ? 'on' : ''}}" />

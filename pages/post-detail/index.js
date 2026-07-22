@@ -48,8 +48,47 @@ Page({
 
     this.setData({
       post, comments, currentUserId, likers,
-      isMine, authorName, authorAvatar, avatarText, timeText
+      isMine, authorName, authorAvatar, avatarText, timeText,
+      myNickName: cu.nickName || "",
+      myAvatarUrl: cu.avatarUrl || ""
     });
+
+    // 转换云存储图片链接
+    this.resolveDetailImages(post, comments, likers);
+  },
+
+  async resolveDetailImages(post, comments, likers) {
+    var allUrls = [];
+    if (post.author && post.author.avatarUrl) allUrls.push(post.author.avatarUrl);
+    if (post.imageUrls && post.imageUrls.length) allUrls = allUrls.concat(post.imageUrls);
+    if (comments) {
+      comments.forEach(function(c) {
+        if (c.fromUser && c.fromUser.avatarUrl) allUrls.push(c.fromUser.avatarUrl);
+      });
+    }
+    if (likers) {
+      likers.forEach(function(l) {
+        if (l.fromUser && l.fromUser.avatarUrl) allUrls.push(l.fromUser.avatarUrl);
+      });
+    }
+    if (!allUrls.length) return;
+    allUrls = allUrls.filter(function(u, i) { return u && allUrls.indexOf(u) === i; });
+    var resolved = await api.resolveImageUrls(allUrls);
+    var map = {};
+    allUrls.forEach(function(u, i) { map[u] = resolved[i]; });
+    if (post.author && post.author.avatarUrl && map[post.author.avatarUrl]) post.author.avatarUrl = map[post.author.avatarUrl];
+    if (post.imageUrls && post.imageUrls.length) post.imageUrls = post.imageUrls.map(function(u) { return map[u] || u; });
+    if (comments) {
+      comments.forEach(function(c) {
+        if (c.fromUser && c.fromUser.avatarUrl && map[c.fromUser.avatarUrl]) c.fromUser.avatarUrl = map[c.fromUser.avatarUrl];
+      });
+    }
+    if (likers) {
+      likers.forEach(function(l) {
+        if (l.fromUser && l.fromUser.avatarUrl && map[l.fromUser.avatarUrl]) l.fromUser.avatarUrl = map[l.fromUser.avatarUrl];
+      });
+    }
+    this.setData({ post: post, comments: comments, likers: likers });
   },
 
   switchTab(e) {
@@ -87,13 +126,23 @@ Page({
   },
 
   // post-card 组件事件转发
-  onLike(event) {
+  async onLike(event) {
     var post = event.detail.post;
-  },
-
-  onMatch(event) {
-    var post = event.detail.post;
-    wx.showToast({ title: "配对成功，可以聊天了", icon: "none" });
+    try {
+      var result = await api.likePost(post._id);
+      var matched = result && result.matched;
+      if (matched) {
+        post.matched = true;
+        post.likedByMe = true;
+        this.setData({ post: post });
+        wx.showToast({ title: "配对成功，可以聊天了", icon: "none" });
+      } else {
+        wx.showToast({ title: "已点亮 · 等待回应", icon: "none" });
+      }
+    } catch (e) {
+      console.error("点亮失败", e);
+      wx.showToast({ title: "网络异常，请重试", icon: "none" });
+    }
   },
 
   onReply(event) {
@@ -106,7 +155,7 @@ Page({
 
   onGoChat(event) {
     var post = event.detail.post;
-    wx.navigateTo({ url: "/pages/chat/index?peerId=" + post.authorId });
+    wx.navigateTo({ url: "/pages/chat/index?peerId=" + post.authorId + "&name=" + encodeURIComponent((post.author && post.author.nickName) || "同学") + "&avatar=" + encodeURIComponent((post.author && post.author.avatarUrl) || "") });
   },
 
   onReport(event) {
@@ -128,6 +177,88 @@ Page({
   },
 
   noop() {},
+
+  onDeletePost() {
+    var that = this;
+    var post = this.data.post;
+    if (!post || !post._id) return;
+
+    console.log("=== 删除帖子调试 ===");
+    console.log("post._id:", post._id);
+    console.log("post.authorId:", post.authorId);
+    console.log("currentUserId:", this.data.currentUserId);
+    console.log("isMine:", this.data.isMine);
+
+    wx.showModal({
+      title: "确认删除",
+      content: "删除后无法恢复，确定要删除这条帖子吗？",
+      confirmText: "删除",
+      confirmColor: "#c94b4b",
+      success: function(res) {
+        if (!res.confirm) return;
+
+        wx.showLoading({ title: "删除中..." });
+
+        api.deletePost(post._id).then(function(result) {
+          wx.hideLoading();
+          console.log("deletePost 返回:", JSON.stringify(result));
+
+          // 立即回查帖子，确认云端状态是否真的变了
+          console.log("=== 回查验证 ===");
+          api.getPostDetail(post._id).then(function(verifyResult) {
+            var p = verifyResult && verifyResult.post;
+            console.log("回查帖子 status:", p ? p.status : "未找到");
+            console.log("回查帖子 _id:", p ? p._id : "N/A");
+          }).catch(function(e) {
+            console.error("回查失败:", e);
+          });
+
+          // 同步更新上一页（用户主页）的帖子列表
+          var pages = getCurrentPages();
+          console.log("当前页面栈深度:", pages.length);
+          var prevPage = pages[pages.length - 2];
+          if (prevPage) {
+            console.log("上一页 route:", prevPage.route);
+            if (prevPage.data && prevPage.data.posts) {
+              var filtered = prevPage.data.posts.filter(function(p) { return p._id !== post._id; });
+              console.log("更新前帖子数:", prevPage.data.posts.length, "更新后:", filtered.length);
+              prevPage.setData({ posts: filtered });
+            } else {
+              console.log("上一页没有 posts 数据");
+            }
+          }
+
+          wx.showToast({ title: "已删除", icon: "success" });
+          setTimeout(function() {
+            wx.navigateBack();
+          }, 1200);
+        }).catch(function(err) {
+          wx.hideLoading();
+          console.error("删除帖子失败 - 完整错误:", JSON.stringify(err));
+          console.error("错误信息:", err.message || err);
+          console.error("错误码:", err.code);
+
+          var msg = "删除失败";
+          if (err.code === "CLOUD_UNAVAILABLE") {
+            msg = "云端不可用，请检查网络";
+          } else if (err.code === "FORBIDDEN") {
+            msg = "无权删除此帖子";
+          } else if (err.code === "NOT_FOUND") {
+            msg = "帖子不存在或已被删除";
+          } else if (err.isBusinessError) {
+            msg = err.message || "删除失败，请重试";
+          }
+
+          wx.showModal({
+            title: "删除失败",
+            content: msg + "\n错误码: " + (err.code || "未知"),
+            showCancel: false
+          });
+        });
+      }
+    });
+  },
+
   goBack() {
     wx.navigateBack();
   }

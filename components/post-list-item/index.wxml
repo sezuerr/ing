@@ -5,9 +5,27 @@
     <view wx:if="{{needsExpand}}" class="expand-row">
       <text class="expand" catchtap="toggle">{{expanded ? '收起' : '展开全部'}}</text>
     </view>
+    <!-- 图片缩略图（用户主页列表） -->
+    <view wx:if="{{post.imageUrls && post.imageUrls.length}}" class="thumb-row">
+      <image
+        wx:for="{{post.imageUrls}}"
+        wx:for-index="idx"
+        wx:key="*this"
+        wx:if="{{idx < 3}}"
+        class="thumb"
+        mode="aspectFill"
+        src="{{item}}"
+        data-urls="{{post.imageUrls}}"
+        data-index="{{idx}}"
+        catchtap="previewImage"
+      />
+      <view wx:if="{{post.imageUrls.length > 3}}" class="thumb-more">
+        <text>+{{post.imageUrls.length - 3}}</text>
+      </view>
+    </view>
     <view class="meta-row">
       <text class="time">{{timeText}}</text>
-      <view class="meta-stats">
+      <view wx:if="{{showStats}}" class="meta-stats">
         <view class="meta-stat">
           <image class="meta-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
           <text class="meta-num">{{post.likeCount || 0}}</text>
@@ -18,5 +36,8 @@
         </view>
       </view>
     </view>
+  </view>
+  <view wx:if="{{isMine}}" class="delete-btn" catchtap="onDelete">
+    <image class="delete-icon" src="/icons/delete-bin-7-line.svg" mode="aspectFit" />
   </view>
 </view>

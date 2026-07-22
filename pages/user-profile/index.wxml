@@ -1,27 +1,59 @@
-<view class="page user-profile-page">
-  <view class="header">
-    <view class="header-top">
-      <view class="profile-copy">
-        <view class="name">{{user.nickName || '同学'}}</view>
-        <view class="bio">{{user.bio || '还没有写简介'}}</view>
-      </view>
+<view class="page profile-page">
+  <!-- 返回按钮 -->
+  <view class="back-row" catchtap="onBackTap" hover-class="back-row-hover">
+    <text class="back-arrow">←</text>
+    <text class="back-label">返回</text>
+  </view>
+
+  <!-- 个人资料头部 -->
+  <view class="profile-header">
+    <!-- 头像区 -->
+    <view class="avatar-wrap">
       <view class="avatar">
         <image wx:if="{{user.avatarUrl}}" src="{{user.avatarUrl}}" mode="aspectFill" />
-        <text wx:else>{{avatarText}}</text>
+        <text wx:else class="avatar-placeholder">{{avatarText}}</text>
       </view>
     </view>
-    <view class="stats-row">
-      <text class="stats-text">获赞 {{user.stats.likeCount || 0}} · 评论 {{user.stats.commentCount || 0}}</text>
+
+    <!-- 名字 & 简介 -->
+    <view class="profile-info">
+      <text class="profile-name">{{user.nickName || '同学'}}</text>
+      <text class="profile-bio">{{user.bio || '还没有写简介'}}</text>
     </view>
   </view>
 
-  <view class="section">
-    <view class="section-tabs">
-      <view class="tab active">帖子</view>
-    </view>
-    <view class="list">
-      <post-list-item wx:for="{{posts}}" wx:key="_id" post="{{item}}" bind:open="openPost" />
-      <view wx:if="{{!posts.length}}" class="empty-row">还没有发布内容</view>
+  <!-- 内容标签栏 -->
+  <view class="content-tabs">
+    <view class="tab active">
+      <text class="tab-text">帖子</text>
+      <view class="tab-indicator" />
     </view>
   </view>
+
+  <!-- 帖子列表（不显示点亮数/评论数） -->
+  <view class="post-list">
+    <block wx:if="{{posts.length}}">
+      <post-list-item
+        wx:for="{{posts}}"
+        wx:key="_id"
+        post="{{item}}"
+        showStats="{{false}}"
+        currentUserId="{{currentUserId}}"
+        bind:open="openPost"
+        bind:delete="onDeletePost"
+      />
+    </block>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-state">
+      <view class="empty-icon-wrap">
+        <text class="empty-icon">📝</text>
+      </view>
+      <text class="empty-title">还没有发布内容</text>
+      <text class="empty-desc">TA 还没有发布过帖子</text>
+    </view>
+  </view>
+
+  <!-- 底部安全区占位 -->
+  <view class="bottom-spacer" />
 </view>

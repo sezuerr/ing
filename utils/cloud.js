@@ -41,6 +41,21 @@ async function callApi(action, data = {}, fallback) {
   return normalizeResult(result, fallback);
 }
 
+// 写操作专用：网络错误时不降级，直接抛出，让页面提示用户重试
+async function callApiWrite(action, data = {}) {
+  if (!canUseCloud()) {
+    const err = new Error("云能力不可用");
+    err.code = "CLOUD_UNAVAILABLE";
+    throw err;
+  }
+
+  const result = await wx.cloud.callFunction({
+    name: "api",
+    data: { action, payload: data }
+  });
+  return normalizeResult(result, null);
+}
+
 function loginAndSyncProfile(profile = {}) {
   return callApi("loginAndSyncProfile", profile, mock.currentUser);
 }
@@ -58,7 +73,7 @@ function createPost(post) {
 }
 
 function likePost(postId) {
-  return callApi("likePost", { postId }, { matched: false });
+  return callApiWrite("likePost", { postId });
 }
 
 function sendPrivateReply(payload) {
@@ -85,11 +100,8 @@ function markNotificationsRead(payload) {
 }
 
 function getUserProfile(payload) {
-  const posts = mock.posts.concat(mock.myPosts).filter((item) => item.authorId === payload.userId);
-  const fallbackUser = payload.userId === mock.currentUser.openid
-    ? mock.currentUser
-    : { nickName: "同学", avatarUrl: "", bio: "", universityName: "", stats: { likeCount: 0, commentCount: 0 } };
-  return callApi("getUserProfile", payload, { user: fallbackUser, posts });
+  // 不使用 mock 帖子兜底：避免删帖后云端异常时返回旧数据，给用户造成困惑
+  return callApi("getUserProfile", payload, { user: null, posts: [] });
 }
 
 function getConversations() {
@@ -110,7 +122,7 @@ function unmatchUser(payload) {
 }
 
 function getMyPosts() {
-  return callApi("getMyPosts", {}, { posts: mock.myPosts });
+  return callApi("getMyPosts", {}, { posts: [] });
 }
 
 function getPostDetail(postId) {
@@ -125,9 +137,38 @@ function getPostLikers(postId) {
   return callApi("getPostLikers", { postId }, { likers });
 }
 
+function deletePost(postId) {
+  console.log("[deletePost] 开始删除帖子:", postId);
+  return callApiWrite("deletePost", { postId }).then(function(result) {
+    console.log("[deletePost] 云端返回:", JSON.stringify(result));
+    return result;
+  }).catch(function(err) {
+    console.error("[deletePost] 删除失败:", err);
+    throw err;
+  });
+}
+
 function getUniversities() {
   const { UNIVERSITIES } = require("./constants");
   return callApi("getUniversities", {}, UNIVERSITIES);
+}
+
+async function resolveImageUrls(urls) {
+  if (!urls || !urls.length) return urls || [];
+  if (!wx.cloud) return urls;
+  const fileIDs = urls.filter(function(u) { return u && typeof u === "string" && u.startsWith("cloud://"); });
+  if (!fileIDs.length) return urls;
+  try {
+    const result = await wx.cloud.getTempFileURL({ fileList: fileIDs });
+    var map = {};
+    (result.fileList || []).forEach(function(f) {
+      if (f.tempFileURL) map[f.fileID] = f.tempFileURL;
+    });
+    return urls.map(function(u) { return map[u] || u; });
+  } catch (e) {
+    console.warn("转换云存储图片链接失败", e);
+    return urls;
+  }
 }
 
 module.exports = {
@@ -149,5 +190,7 @@ module.exports = {
   getMyPosts,
   getPostDetail,
   getPostLikers,
-  getUniversities
+  deletePost,
+  getUniversities,
+  resolveImageUrls
 };

@@ -304,18 +304,7 @@
 
 /* 位置信息 */
 .location-privacy-row {
-  padding: 12rpx 0;
-}
-
-.location-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.location-hint {
-  font-size: 22rpx;
-  color: #b8a88a;
+  /* 与可见范围行一致 */
 }
 
 /* 切换开关 */
