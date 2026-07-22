@@ -29,6 +29,7 @@ Page({
   },
 
   async load() {
+    wx.showLoading({ title: "加载中" });
     const [noticeResult, chatResult] = await Promise.all([
       api.getNotifications(),
       api.getConversations()
@@ -47,6 +48,7 @@ Page({
     }));
 
     this.setData({ unreadCounts, conversations });
+    wx.hideLoading();
   },
 
   startPolling() {
@@ -91,7 +93,9 @@ Page({
       content: "解除后将关闭这个聊天入口。",
       success: async (res) => {
         if (!res.confirm) return;
+        wx.showLoading({ title: "处理中" });
         await api.unmatchUser({ conversationId: item._id });
+        wx.hideLoading();
         wx.showToast({ title: "已解除", icon: "none" });
         this.load();
       }

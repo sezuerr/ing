@@ -140,18 +140,24 @@ Page({
       mine: true,
       createdAt: Date.now()
     };
-    const messages = buildTimeline(this.data.messages.concat(message));
+    const prevMessages = this.data.messages;
+    const messages = buildTimeline(prevMessages.concat(message));
     this.setData({
       draft: "",
       canSend: false,
       messages,
       scrollIntoView: `msg-${messages.length - 1}`
     });
-    await api.sendMessage({
-      conversationId: this.data.conversationId,
-      content
-    });
-    if (wx.cloud && getApp().globalData.cloudReady) this.loadMessages();
+    try {
+      await api.sendMessage({
+        conversationId: this.data.conversationId,
+        content
+      });
+      if (wx.cloud && getApp().globalData.cloudReady) this.loadMessages();
+    } catch (error) {
+      this.setData({ messages: prevMessages, draft: content, canSend: true });
+      wx.showToast({ title: "发送失败，请重试", icon: "none" });
+    }
   },
 
   goBack() {

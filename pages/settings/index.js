@@ -116,14 +116,19 @@ Page({
     }
 
     this.setData({ saving: true });
-    const saved = await api.updateProfile({
-      ...profile,
-      universityName: selectedUniversity ? selectedUniversity.name : "",
-      geoHash: selectedUniversity ? selectedUniversity.geoHash : ""
-    });
-    getApp().globalData.currentUser = saved;
-    this.setData({ saving: false });
-    wx.showToast({ title: "已保存", icon: "success" });
+    try {
+      const saved = await api.updateProfile({
+        ...profile,
+        universityName: selectedUniversity ? selectedUniversity.name : "",
+        geoHash: selectedUniversity ? selectedUniversity.geoHash : ""
+      });
+      getApp().globalData.currentUser = saved;
+      wx.showToast({ title: "已保存", icon: "success" });
+    } catch (error) {
+      wx.showToast({ title: error.message || "保存失败，请重试", icon: "none" });
+    } finally {
+      this.setData({ saving: false });
+    }
   },
 
   logout() {

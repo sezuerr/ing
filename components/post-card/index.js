@@ -124,7 +124,6 @@ Component({
       if (!this.data.canComment) return;
       const content = this.data.draft.trim();
       if (!content) return;
-      this.triggerEvent("reply", { post: this.data.post, content });
       this.setData({ draft: "" });
 
       // 乐观更新：立即把新评论加到卡片上，不需要刷新就能看到

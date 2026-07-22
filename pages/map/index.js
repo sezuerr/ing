@@ -4,6 +4,13 @@ function isWithin3h(ts) {
   return (Date.now() - ts) <= 3 * 60 * 60 * 1000;
 }
 
+// 数据清洗: 接口返回的 icon 字段可能夹带中文文字（如 "🎧 动态"），
+// 此函数剔除中文字符和空格，只保留纯 Emoji/图标
+function extractIconOnly(raw) {
+  if (!raw) return "💡";
+  return raw.replace(/[\u4e00-\u9fa5]/g, "").replace(/\s+/g, "").trim() || "💡";
+}
+
 Page({
   data: {
     mapLongitude: 116.3130,
@@ -20,6 +27,7 @@ Page({
   _markerIdCounter: 0,
   _markerDataMap: {},
   _located: false,
+  _popoverSettled: false,
 
   onLoad() {
     var app = getApp();
@@ -61,7 +69,10 @@ Page({
 
   onShow() {
     this.setTab();
-    this.loadFeed();
+    // 修复: 仅在非 popover 展示状态下刷新列表，防止正在查看回复时被覆盖
+    if (!this.data.showPopover) {
+      this.loadFeed();
+    }
   },
 
   setTab() {
@@ -125,15 +136,22 @@ Page({
       var markerId = ++this._markerIdCounter;
       this._markerDataMap[markerId] = item;
 
+      // 数据清洗: 切除 item.emoji 中夹带的中文文字，只保留纯 Emoji
+      var cleanIcon = extractIconOnly(item.emoji);
+
       markers.push({
         id: markerId,
         latitude: item.latitude,
         longitude: item.longitude,
-        width: 1,
+        // 核心修改：把底图缩小并设置为全透明（隐身术）
+        width: 1, 
         height: 1,
-        alpha: 0,
+        alpha: 0, 
+        iconPath: "/icons/ing_logo.png", // 留着路径防止系统报错，反正已经透明看不见了
+        
+        // 这样就只剩下纯净的黄色气泡在地图上了
         callout: {
-          content: item.emoji + " " + item.label,
+          content: cleanIcon,
           bgColor: "#FFF9C4",
           color: "#333333",
           padding: 8,
@@ -152,7 +170,6 @@ Page({
 
     try {
       var result = await api.getDiscoverFeed({
-        scope: "university",
         topicOnly: false
       });
       var posts = result.posts || [];
@@ -180,8 +197,11 @@ Page({
       return;
     }
 
-    this.setData({ feedList: feedList });
-    this.generateMapMarkers();
+    // 修复: 仅在非 popover 状态下刷新 markers，防止异步图片解析覆盖回复数据
+    if (!this.data.showPopover) {
+      this.setData({ feedList: feedList });
+      this.generateMapMarkers();
+    }
   },
 
   onMarkerTap(e) {
@@ -238,6 +258,7 @@ Page({
       };
     }
 
+    this._popoverSettled = false;
     this.setData({
       showPopover: true,
       popoverData: { post: post }
@@ -259,7 +280,10 @@ Page({
   },
 
   closePopover() {
+    this._popoverSettled = false;
     this.setData({ showPopover: false, popoverData: null });
+    // 修复: 关闭弹窗后重新显示地图并刷新 markers
+    this.generateMapMarkers();
   },
 
   noop() {},
