@@ -1,6 +1,8 @@
 <view class="map-page">
   <image class="top-logo" src="/icons/ing_logo.png" mode="aspectFit" />
+  <!-- 修复: popover 展示时隐藏 map 原生组件，避免原生层级遮挡 webview 弹窗 -->
   <map
+    wx:if="{{!showPopover}}"
     id="campusMap"
     class="campus-map"
     latitude="{{mapLatitude}}"
@@ -12,6 +14,9 @@
     bindcallouttap="onCalloutTap"
     bindregionchange="onRegionChange"
   />
+
+  <!-- 修复: 使用 hidden 保留 map 的占位，配合 wx:if 条件渲染确保弹窗不被原生组件遮挡 -->
+  <view wx:if="{{showPopover}}" class="map-placeholder" />
 
   <view class="popover-overlay {{showPopover ? 'show' : ''}}" catchtap="closePopover">
     <view wx:if="{{popoverData}}" class="popover-card-wrapper" catchtap="noop">

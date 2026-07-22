@@ -4,6 +4,13 @@ function isWithin3h(ts) {
   return (Date.now() - ts) <= 3 * 60 * 60 * 1000;
 }
 
+// 数据清洗: 接口返回的 icon 字段可能夹带中文文字（如 "🎧 动态"），
+// 此函数剔除中文字符和空格，只保留纯 Emoji/图标
+function extractIconOnly(raw) {
+  if (!raw) return "💡";
+  return raw.replace(/[\u4e00-\u9fa5]/g, "").replace(/\s+/g, "").trim() || "💡";
+}
+
 Page({
   data: {
     mapLongitude: 116.3130,
@@ -20,6 +27,7 @@ Page({
   _markerIdCounter: 0,
   _markerDataMap: {},
   _located: false,
+  _popoverSettled: false,
 
   onLoad() {
     var app = getApp();
@@ -61,7 +69,10 @@ Page({
 
   onShow() {
     this.setTab();
-    this.loadFeed();
+    // 修复: 仅在非 popover 展示状态下刷新列表，防止正在查看回复时被覆盖
+    if (!this.data.showPopover) {
+      this.loadFeed();
+    }
   },
 
   setTab() {
@@ -125,15 +136,19 @@ Page({
       var markerId = ++this._markerIdCounter;
       this._markerDataMap[markerId] = item;
 
+      // 数据清洗: 切除 item.emoji 中夹带的中文文字，只保留纯 Emoji
+      var cleanIcon = extractIconOnly(item.emoji);
+
       markers.push({
         id: markerId,
         latitude: item.latitude,
         longitude: item.longitude,
-        width: 1,
-        height: 1,
-        alpha: 0,
+        width: 32,
+        height: 32,
+        iconPath: "/icons/ing_logo.png",
+        alpha: 1,
         callout: {
-          content: item.emoji + " " + item.label,
+          content: cleanIcon,
           bgColor: "#FFF9C4",
           color: "#333333",
           padding: 8,
@@ -179,8 +194,11 @@ Page({
       return;
     }
 
-    this.setData({ feedList: feedList });
-    this.generateMapMarkers();
+    // 修复: 仅在非 popover 状态下刷新 markers，防止异步图片解析覆盖回复数据
+    if (!this.data.showPopover) {
+      this.setData({ feedList: feedList });
+      this.generateMapMarkers();
+    }
   },
 
   onMarkerTap(e) {
@@ -208,11 +226,9 @@ Page({
     this.setData({ feedList: feedList });
     this.generateMapMarkers();
 
-    // 优先使用完整帖子对象，mock 数据则构造简化版
     var post;
     if (data._post) {
       post = data._post;
-      // 转换图片链接
       this.resolvePopoverImages(post);
     } else {
       post = {
@@ -237,6 +253,7 @@ Page({
       };
     }
 
+    this._popoverSettled = false;
     this.setData({
       showPopover: true,
       popoverData: { post: post }
@@ -248,17 +265,24 @@ Page({
     var allUrls = [];
     if (post.author && post.author.avatarUrl) allUrls.push(post.author.avatarUrl);
     if (post.imageUrls && post.imageUrls.length) allUrls = allUrls.concat(post.imageUrls);
-    if (!allUrls.length) return;
+    if (!allUrls.length) { this._popoverSettled = true; return; }
     var resolved = await api.resolveImageUrls(allUrls);
     var map = {};
     allUrls.forEach(function(u, i) { map[u] = resolved[i]; });
     if (post.author && post.author.avatarUrl && map[post.author.avatarUrl]) post.author.avatarUrl = map[post.author.avatarUrl];
     if (post.imageUrls && post.imageUrls.length) post.imageUrls = post.imageUrls.map(function(u) { return map[u] || u; });
-    this.setData({ popoverData: { post: post } });
+    // 修复: 仅在 popover 仍开启时更新图片 URL，避免异步结果覆盖已乐观更新的 comments
+    if (this.data.showPopover && this.data.popoverData && this.data.popoverData.post) {
+      this.setData({ popoverData: { post: post } });
+    }
+    this._popoverSettled = true;
   },
 
   closePopover() {
+    this._popoverSettled = false;
     this.setData({ showPopover: false, popoverData: null });
+    // 修复: 关闭弹窗后重新显示地图并刷新 markers
+    this.generateMapMarkers();
   },
 
   noop() {},
@@ -281,10 +305,19 @@ Page({
     }
   },
 
+  // 修复: 收到组件回复事件后同步更新页面级别 popoverData，确保响应式状态不丢失
   onPopoverReply(e) {
-    var post = e.detail.post;
+    var repliedPost = e.detail.post;
     var content = e.detail.content;
-    api.sendPrivateReply({ postId: post._id, content: content });
+    // 修复: 将组件乐观更新后的 post 同步回页面，并触发 toast 反馈
+    if (repliedPost && this.data.popoverData) {
+      this.setData({ popoverData: { post: repliedPost } });
+    }
+    api.sendPrivateReply({ postId: repliedPost._id, content: content }).then(function() {
+      wx.showToast({ title: "已发送", icon: "success" });
+    }).catch(function(err) {
+      wx.showToast({ title: "发送失败，请重试", icon: "none" });
+    });
   },
 
   onPopoverGoChat(e) {
