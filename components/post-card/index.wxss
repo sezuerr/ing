@@ -289,6 +289,119 @@
   margin-top: 2rpx;
 }
 
+/* --- 评论操作按钮 --- */
+.comment-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 6rpx;
+}
+
+.comment-action-btn {
+  font-size: 22rpx;
+  color: #8a806d;
+}
+
+.comment-delete-btn {
+  color: #c94b4b;
+}
+
+.comment-row-active {
+  background: rgba(255, 193, 7, 0.08);
+  border-radius: 12rpx;
+  padding: 8rpx 12rpx;
+  margin: 0 -12rpx;
+}
+
+/* --- 评论树缩进 --- */
+.comment-thread.has-thread {
+  border-left: 2rpx solid rgba(235, 210, 140, 0.3);
+  padding-left: 12rpx;
+}
+
+.comment-thread.has-thread .comment-row {
+  border-bottom: 0;
+}
+
+/* --- 回复弹窗 --- */
+.reply-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+.reply-modal {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 32rpx 28rpx;
+  z-index: 101;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+}
+
+.reply-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.reply-modal-title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #15130d;
+}
+
+.reply-modal-close {
+  font-size: 26rpx;
+  color: #8a806d;
+}
+
+.reply-modal-quote {
+  display: block;
+  padding: 12rpx 16rpx;
+  background: rgba(21, 19, 13, 0.04);
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #8a806d;
+  margin-bottom: 16rpx;
+  max-height: 100rpx;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.reply-modal-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.reply-modal-input {
+  flex: 1;
+  height: 80rpx;
+  padding: 0 24rpx;
+  border-radius: 40rpx;
+  background: rgba(21, 19, 13, 0.06);
+  font-size: 28rpx;
+  color: #15130d;
+}
+
+/* --- 清理旧交互样式 --- */
+.reply-to-bar,
+.reply-cancel-btn,
+.reply-to-text,
+.comment-actions,
+.comment-action-btn,
+.comment-delete-btn {
+  display: none;
+}
+
 /* ===== 底部操作栏 ===== */
 .card-footer {
   padding: 24rpx 28rpx 28rpx;
@@ -299,9 +412,16 @@
 /* --- 自己的帖子 --- */
 .footer-mine {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 40rpx;
+  gap: 16rpx;
   padding: 8rpx 0;
+  width: 100%;
+}
+
+.footer-mine .reply-area {
+  flex-basis: 100%;
+  margin-top: 4rpx;
 }
 
 .mine-stat {
@@ -369,21 +489,42 @@
   color: #8a806d;
 }
 
-/* --- 配对后 --- */
-.footer-matched {
+/* --- 已点亮 + 有回复栏：水平布局 --- */
+.footer-liked-has-reply {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 16rpx;
   width: 100%;
 }
 
-.footer-matched .like-btn.liked {
+.footer-liked-has-reply .like-btn.liked {
   width: 80rpx;
   height: 80rpx;
   flex-shrink: 0;
 }
 
-.footer-matched .footer-icon {
+.footer-liked-has-reply .footer-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+/* --- 未点亮但可回复（点亮过该作者，但未点亮此帖） --- */
+.footer-default-with-reply {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+  width: 100%;
+}
+
+.footer-default-with-reply .like-btn {
+  width: 80rpx;
+  height: 80rpx;
+  flex-shrink: 0;
+}
+
+.footer-default-with-reply .footer-icon {
   width: 44rpx;
   height: 44rpx;
 }

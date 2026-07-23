@@ -195,15 +195,25 @@ async function getDiscoverFeed(openid, payload) {
     return true;
   });
   const authorIds = [...new Set(candidatePosts.map(p => p.authorId))];
+  const postIds = candidatePosts.map(p => p._id);
 
-  // 批量查：我点赞过哪些作者（likedByMe）
-  const myLikes = authorIds.length > 0
+  // 批量查：我点赞过哪些帖子（likedByMe per-post）
+  const myPostLikes = postIds.length > 0
+    ? (await db.collection(C.likes).where({
+        fromUserId: openid,
+        postId: _.in(postIds)
+      }).limit(200).get()).data
+    : [];
+  const likedPostIds = new Set(myPostLikes.map(l => l.postId));
+
+  // 批量查：我点赞过哪些作者（canReply per-author）
+  const myAuthorLikes = authorIds.length > 0
     ? (await db.collection(C.likes).where({
         fromUserId: openid,
         toUserId: _.in(authorIds)
       }).limit(200).get()).data
     : [];
-  const likedAuthorIds = new Set(myLikes.map(l => l.toUserId));
+  const likedAuthorIds = new Set(myAuthorLikes.map(l => l.toUserId));
 
   // 批量查：哪些作者点赞过我（likedMe）
   const likesToMe = authorIds.length > 0
@@ -215,7 +225,6 @@ async function getDiscoverFeed(openid, payload) {
   const likedMeAuthorIds = new Set(likesToMe.map(l => l.fromUserId));
 
   // 批量查：所有候选帖子的评论（每个帖子最多取 3 条）
-  const postIds = candidatePosts.map(p => p._id);
   const commentsResult = postIds.length > 0
     ? (await db.collection(C.comments).where({
         postId: _.in(postIds)
@@ -234,18 +243,20 @@ async function getDiscoverFeed(openid, payload) {
     const author = await getUserByOpenId(post.authorId);
     const isFriend = friendIds.includes(post.authorId);
     const likedMe = likedMeAuthorIds.has(post.authorId);
-    const likedByMe = likedAuthorIds.has(post.authorId);
+    const likedByMe = likedPostIds.has(post._id);
+    const canReply = likedAuthorIds.has(post.authorId) || post.authorId === openid;
     const postComments = (commentsByPost[post._id] || []).slice(0, 3);
 
-    // 评论者信息脱敏：仅好友（已配对）可见真实信息
+    // 评论者信息脱敏：仅对话双方可见真实身份（fromUserId 或 toUserId 为当前用户）
     const visibleComments = [];
     for (const c of postComments) {
       const commenterIsMe = c.fromUserId === openid;
-      const commenterIsFriend = friendIds.includes(c.fromUserId);
-      const shouldReveal = commenterIsMe || commenterIsFriend || c.fromUserId === post.authorId;
+      const shouldReveal = commenterIsMe || c.toUserId === openid;
       const commenter = shouldReveal ? await getUserByOpenId(c.fromUserId) : null;
       visibleComments.push({
         _id: c._id,
+        fromUserId: c.fromUserId,
+        parentCommentId: c.parentCommentId,
         content: c.content,
         createdAt: c.createdAt,
         isAuthor: c.fromUserId === post.authorId,
@@ -266,6 +277,7 @@ async function getDiscoverFeed(openid, payload) {
       mutualFriendCount: isFriend ? 1 : 0,
       likedMe,
       likedByMe,
+      canReply,
       matched: isFriend,
       comments: visibleComments,
       distanceText: post.distanceText || "距你10公里内"
@@ -549,7 +561,7 @@ async function likePost(openid, payload) {
     const existingMatch = await activeMatch(openid, post.authorId);
     if (existingMatch) {
       const conv = await db.collection(C.conversations).where({ matchId: existingMatch._id }).limit(1).get();
-      return ok({ matched: true, duplicate: true, matchId: existingMatch._id, conversationId: conv.data[0] ? conv.data[0]._id : null });
+      return ok({ matched: false, duplicate: true, matchId: existingMatch._id, conversationId: conv.data[0] ? conv.data[0]._id : null });
     }
     return ok({ matched: false, duplicate: true });
   }
@@ -596,14 +608,22 @@ async function likePost(openid, payload) {
     return ok({ matched: false });
   }
 
-  // 5. 互亮 → 创建或恢复配对
+  // 5. 检查是否已有配对（老好友给新帖点亮，不应再触发配对）
+  const existingMatch = await activeMatch(openid, post.authorId);
+  if (existingMatch) {
+    const convResult = await db.collection(C.conversations).where({ matchId: existingMatch._id }).limit(1).get();
+    const conversationId = convResult.data[0] ? convResult.data[0]._id : null;
+    return ok({ matched: false, matchId: existingMatch._id, conversationId });
+  }
+
+  // 6. 互亮 → 创建或恢复配对
   const match = await createOrGetMatch(openid, post.authorId);
 
-  // 6. 查找对应的会话 ID
+  // 7. 查找对应的会话 ID
   const convResult = await db.collection(C.conversations).where({ matchId: match._id }).limit(1).get();
   const conversationId = convResult.data[0] ? convResult.data[0]._id : null;
 
-  // 7. 通知双方配对成功
+  // 8. 通知双方配对成功
   try {
     await createNotification({
       recipientId: post.authorId,
@@ -631,31 +651,68 @@ async function likePost(openid, payload) {
 async function sendPrivateReply(openid, payload) {
   const post = (await db.collection(C.posts).doc(payload.postId).get()).data;
   if (!post) return fail("帖子不存在", "NOT_FOUND");
-  const match = await activeMatch(openid, post.authorId);
-  if (!match) return fail("互亮后才能私密回复", "FORBIDDEN");
+
+  const isAuthor = openid === post.authorId;
+  const liked = isAuthor ? null : await db.collection(C.likes).where({
+    fromUserId: openid,
+    toUserId: post.authorId
+  }).limit(1).get();
+  if (!isAuthor && !liked.data.length) return fail("点亮后才能回复", "FORBIDDEN");
 
   const content = String(payload.content || "").trim().slice(0, 500);
   if (!content) return fail("回复内容不能为空");
+
+  let toUserId = post.authorId;
+  let parentCommentId = null;
+  let notificationRecipientId = post.authorId;
+
+  if (payload.parentCommentId) {
+    const parentComment = (await db.collection(C.comments).doc(payload.parentCommentId).get()).data;
+    if (!parentComment || parentComment.postId !== payload.postId) return fail("原评论不存在", "NOT_FOUND");
+    parentCommentId = parentComment._id;
+    toUserId = parentComment.fromUserId;
+    notificationRecipientId = parentComment.fromUserId;
+  }
+
   await db.collection(C.comments).add({
     data: {
       postId: payload.postId,
       fromUserId: openid,
-      toUserId: post.authorId,
+      toUserId,
+      parentCommentId: parentCommentId || undefined,
       content,
       createdAt: now()
     }
   });
   await db.collection(C.posts).doc(payload.postId).update({ data: { commentCount: _.inc(1) } });
   await db.collection(C.users).where({ openid: post.authorId }).update({ data: { "stats.commentCount": _.inc(1) } });
-  await createNotification({
-    recipientId: post.authorId,
-    type: "comment",
-    actorId: openid,
-    postId: payload.postId,
-    title: "收到一条私密回复",
-    description: content
-  });
+  if (notificationRecipientId !== openid) {
+    await createNotification({
+      recipientId: notificationRecipientId,
+      type: "comment",
+      actorId: openid,
+      postId: payload.postId,
+      title: "收到一条私密回复",
+      description: content
+    });
+  }
   return ok({ sent: true });
+}
+
+async function deleteComment(openid, payload) {
+  const comment = (await db.collection(C.comments).doc(payload.commentId).get()).data;
+  if (!comment) return fail("评论不存在", "NOT_FOUND");
+  if (comment.fromUserId !== openid) return fail("无权删除", "FORBIDDEN");
+
+  await db.collection(C.comments).doc(payload.commentId).remove();
+
+  try {
+    await db.collection(C.posts).doc(comment.postId).update({ data: { commentCount: _.inc(-1) } });
+  } catch (e) {
+    console.warn("更新评论计数失败（非关键）", e);
+  }
+
+  return ok({ deleted: true });
 }
 
 async function getNotifications(openid, payload = {}) {
@@ -884,12 +941,20 @@ async function getPostDetail(openid, payload) {
     }
     await resolveFileUrlsInData(post);
     await resolveFileUrlsInData(enrichedComments);
-    return ok({ post, comments: enrichedComments });
+    var ownAuthor = await getUserByOpenId(openid);
+    return ok({ post: { ...post, author: ownAuthor ? { nickName: ownAuthor.nickName, avatarUrl: ownAuthor.avatarUrl, isFriend: false } : {}, matched: false, canReply: true }, comments: enrichedComments });
   }
 
-  // 别人的帖子：需配对才能查看
+  // 别人的帖子：需点亮过帖主或已配对才能查看评论
+  const hasLikedAuthor = await db.collection(C.likes).where({
+    fromUserId: openid,
+    toUserId: post.authorId
+  }).limit(1).get();
+  const canAccess = hasLikedAuthor.data.length > 0;
+  if (!canAccess) return fail("点亮后才能查看评论", "FORBIDDEN");
+
   const match = await activeMatch(openid, post.authorId);
-  if (!match) return fail("无权查看评论明细", "FORBIDDEN");
+  const matched = Boolean(match);
 
   // 补齐匹配状态，保证 post-card 组件渲染与发现页一致
   const author = await getUserByOpenId(post.authorId);
@@ -899,7 +964,7 @@ async function getPostDetail(openid, payload) {
   }).limit(1).get();
   const likedByMe = await db.collection(C.likes).where({
     fromUserId: openid,
-    toUserId: post.authorId
+    postId: payload.postId
   }).limit(1).get();
 
   // 查询评论
@@ -909,19 +974,16 @@ async function getPostDetail(openid, payload) {
     .limit(100)
     .get();
 
-  // 收集所有评论者 ID
-  const commenterIds = [...new Set(comments.data.map(c => c.fromUserId))];
-  const friendIdSet = new Set(await getFriendIds(openid));
-
-  // 格式化评论（与 getDiscoverFeed 一致）
+  // 格式化评论（配对式隐私：仅评论双方可见身份）
   const visibleComments = [];
   for (const c of comments.data) {
     const commenterIsMe = c.fromUserId === openid;
-    const commenterIsFriend = friendIdSet.has(c.fromUserId) || c.fromUserId === post.authorId;
-    const shouldReveal = commenterIsMe || commenterIsFriend;
+    const shouldReveal = commenterIsMe || c.toUserId === openid;
     const commenter = shouldReveal ? await getUserByOpenId(c.fromUserId) : null;
     visibleComments.push({
       _id: c._id,
+      fromUserId: c.fromUserId,
+      parentCommentId: c.parentCommentId,
       content: c.content,
       createdAt: c.createdAt,
       isAuthor: c.fromUserId === post.authorId,
@@ -937,12 +999,13 @@ async function getPostDetail(openid, payload) {
     author: {
       nickName: author ? author.nickName : "好友",
       avatarUrl: author ? author.avatarUrl : "",
-      isFriend: true
+      isFriend: matched
     },
     mutualFriendCount: 1,
     likedMe: Boolean(likedMe.data.length),
     likedByMe: Boolean(likedByMe.data.length),
-    matched: true,
+    matched,
+    canReply: canAccess || (post.authorId === openid),
     comments: visibleComments
   };
 
@@ -1025,6 +1088,7 @@ const handlers = {
   checkContentSafety,
   likePost,
   sendPrivateReply,
+  deleteComment,
   getNotifications,
   markNotificationsRead,
   getUserProfile,

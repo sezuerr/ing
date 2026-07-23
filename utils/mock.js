@@ -77,6 +77,7 @@ const posts = [
     mutualFriendCount: 3,
     likedMe: true,
     matched: true,
+    canReply: true,
     likeCount: 8,
     commentCount: 2
   },
@@ -98,6 +99,7 @@ const posts = [
     mutualFriendCount: 2,
     likedMe: false,
     likedByMe: true,
+    canReply: true,
     likeCount: 11,
     commentCount: 4
   },
@@ -159,6 +161,7 @@ const posts = [
     mutualFriendCount: 4,
     likedMe: false,
     matched: true,
+    canReply: true,
     likeCount: 9,
     commentCount: 1
   },
@@ -200,6 +203,7 @@ const posts = [
     mutualFriendCount: 2,
     likedMe: true,
     matched: true,
+    canReply: true,
     likeCount: 12,
     commentCount: 5
   },
@@ -221,6 +225,7 @@ const posts = [
     mutualFriendCount: 0,
     likedMe: false,
     matched: true,
+    canReply: true,
     likeCount: 18,
     commentCount: 8
   },

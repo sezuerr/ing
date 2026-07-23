@@ -248,21 +248,31 @@ Page({
     try {
       var result = await api.likePost(post._id);
       var matched = result && result.matched;
+
+      post.likedByMe = true;
+      post.canReply = true;
       if (matched) {
-        // 同时更新 currentPost 引用和 posts 数组中的原始对象
         post.matched = true;
-        post.likedByMe = true;
-        post.conversationId = result.conversationId || post.conversationId;
-        var posts = this.data.posts;
-        var idx = this.data.currentIndex;
-        if (posts[idx] && posts[idx]._id === post._id) {
-          posts[idx].matched = true;
-          posts[idx].likedByMe = true;
-          posts[idx].conversationId = post.conversationId;
-        }
-        this.setData({ currentPost: post, posts: posts });
       }
-      wx.showToast({ title: matched ? "配对成功！解锁聊天" : "已点亮 · 等待回应", icon: "none" });
+      if (result.conversationId) {
+        post.conversationId = result.conversationId;
+      }
+
+      var posts = this.data.posts;
+      var idx = this.data.currentIndex;
+      if (posts[idx] && posts[idx]._id === post._id) {
+        posts[idx].likedByMe = true;
+        posts[idx].canReply = true;
+        if (matched) {
+          posts[idx].matched = true;
+        }
+        if (result.conversationId) {
+          posts[idx].conversationId = result.conversationId;
+        }
+      }
+
+      this.setData({ currentPost: post, posts: posts });
+      wx.showToast({ title: matched ? "配对成功！解锁聊天" : "已点亮", icon: "none" });
     } catch (e) {
       console.error("点亮失败", e);
       wx.showToast({ title: "网络异常，请重试", icon: "none" });
@@ -277,7 +287,9 @@ Page({
   async replyPost(event) {
     var data = event.detail;
     if (!data.content) return;
-    await api.sendPrivateReply({ postId: data.post._id, content: data.content });
+    var payload = { postId: data.post._id, content: data.content };
+    if (data.parentCommentId) payload.parentCommentId = data.parentCommentId;
+    await api.sendPrivateReply(payload);
     wx.showToast({ title: "已发送", icon: "success" });
   },
 

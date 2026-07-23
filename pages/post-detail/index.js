@@ -15,7 +15,10 @@ Page({
     authorAvatar: "",
     avatarText: "",
     timeText: "",
-    tabActive: "likes"
+    tabActive: "replies",
+    draft: "",
+    replyingTo: "",
+    replyToName: ""
   },
 
   async onLoad(options) {
@@ -131,14 +134,13 @@ Page({
     try {
       var result = await api.likePost(post._id);
       var matched = result && result.matched;
+      post.likedByMe = true;
+      post.canReply = true;
       if (matched) {
         post.matched = true;
-        post.likedByMe = true;
-        this.setData({ post: post });
-        wx.showToast({ title: "配对成功，可以聊天了", icon: "none" });
-      } else {
-        wx.showToast({ title: "已点亮 · 等待回应", icon: "none" });
       }
+      this.setData({ post: post });
+      wx.showToast({ title: matched ? "配对成功，可以聊天了" : "已点亮", icon: "none" });
     } catch (e) {
       console.error("点亮失败", e);
       wx.showToast({ title: "网络异常，请重试", icon: "none" });
@@ -148,7 +150,9 @@ Page({
   onReply(event) {
     var post = event.detail.post;
     var content = event.detail.content;
-    api.sendPrivateReply({ postId: post._id, content: content }).then(function() {
+    var payload = { postId: post._id, content: content };
+    if (event.detail.parentCommentId) payload.parentCommentId = event.detail.parentCommentId;
+    api.sendPrivateReply(payload).then(function() {
       wx.showToast({ title: "已发送", icon: "success" });
     });
   },
@@ -261,5 +265,70 @@ Page({
 
   goBack() {
     wx.navigateBack();
+  },
+
+  onOwnDraftInput(e) {
+    this.setData({ draft: e.detail.value });
+  },
+
+  onReplyOwnComment(e) {
+    var cid = e.currentTarget.dataset.cid;
+    var name = e.currentTarget.dataset.name || "";
+    if (!cid) return;
+    this.setData({ replyingTo: cid, replyToName: name, draft: "" });
+  },
+
+  cancelOwnReply() {
+    this.setData({ replyingTo: "", replyToName: "", draft: "" });
+  },
+
+  sendOwnReply() {
+    var content = this.data.draft.trim();
+    if (!content) return;
+    var payload = { postId: this.data.post._id, content: content };
+    if (this.data.replyingTo) payload.parentCommentId = this.data.replyingTo;
+    var that = this;
+    that.setData({ draft: "", replyingTo: "", replyToName: "" });
+    api.sendPrivateReply(payload).then(function() {
+      wx.showToast({ title: "已发送", icon: "success" });
+    }).catch(function(err) {
+      console.error("回复失败", err);
+      wx.showToast({ title: "发送失败", icon: "none" });
+    });
+    // 乐观插入
+    var comments = this.data.comments.slice();
+    comments.push({
+      _id: "temp_" + Date.now(),
+      fromUserId: this.data.currentUserId,
+      content: content,
+      parentCommentId: payload.parentCommentId,
+      createdAt: new Date().toISOString(),
+      fromUser: { nickName: this.data.authorName || "我", avatarUrl: this.data.authorAvatar || "" },
+      isAuthor: true,
+      _optimistic: true
+    });
+    this.setData({ comments: comments });
+  },
+
+  onLongPressOwnComment(e) {
+    var cid = e.currentTarget.dataset.cid;
+    if (!cid || cid.indexOf("temp_") === 0) return;
+    var that = this;
+    wx.showModal({
+      title: "确认删除",
+      content: "确定要删除这条回复吗？",
+      confirmText: "删除",
+      confirmColor: "#c94b4b",
+      success: function(res) {
+        if (res.confirm) {
+          var comments = that.data.comments.filter(function(c) { return c._id !== cid; });
+          that.setData({ comments: comments });
+          api.deleteComment(cid).catch(function(err) {
+            console.error("删除失败", err);
+            wx.showToast({ title: "删除失败", icon: "none" });
+          });
+        }
+      }
+    });
   }
 });

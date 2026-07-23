@@ -1,6 +1,5 @@
 const { fromNow } = require("../../utils/time");
 
-// 评论时间简短显示
 function shortTime(ts) {
   var diff = Date.now() - new Date(ts).getTime();
   var mins = Math.floor(diff / 60000);
@@ -13,36 +12,42 @@ function shortTime(ts) {
   return Math.floor(days / 30) + "个月前";
 }
 
-// 根据图片数量决定布局类型
 function getImageLayout(count) {
   if (count === 1) return "one";
   if (count === 2) return "two";
   if (count === 4) return "four";
-  return "grid"; // 3, 5, 6, 7, 8, 9 → 3列网格
+  return "grid";
+}
+
+function buildCommentTree(comments) {
+  if (!comments || !comments.length) return [];
+  var map = {};
+  var roots = [];
+  var reversed = comments.slice().reverse();
+  for (var i = 0; i < reversed.length; i++) {
+    var c = reversed[i];
+    map[c._id] = { comment: c, children: [], depth: 0 };
+  }
+  for (var j = 0; j < reversed.length; j++) {
+    var c = reversed[j];
+    var node = map[c._id];
+    if (c.parentCommentId && map[c.parentCommentId]) {
+      node.depth = map[c.parentCommentId].depth + 1;
+      map[c.parentCommentId].children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  return roots;
 }
 
 Component({
   properties: {
-    post: {
-      type: Object,
-      value: null
-    },
-    currentUserId: {
-      type: String,
-      value: ""
-    },
-    myNickName: {
-      type: String,
-      value: ""
-    },
-    myAvatarUrl: {
-      type: String,
-      value: ""
-    },
-    comments: {
-      type: Array,
-      value: []
-    }
+    post: { type: Object, value: null },
+    currentUserId: { type: String, value: "" },
+    myNickName: { type: String, value: "" },
+    myAvatarUrl: { type: String, value: "" },
+    comments: { type: Array, value: [] }
   },
 
   observers: {
@@ -63,12 +68,14 @@ Component({
       } else {
         name = (post.mutualFriendCount || 0) + " 个共同好友";
       }
-      var alreadyLiked = likedByMe || post.matched || false;
+      var alreadyLiked = likedByMe;
+      var canComment = Boolean(post.canReply) || isMine;
       var imgCount = (post.imageUrls && post.imageUrls.length) || 0;
+      var tree = buildCommentTree(post.comments || []);
       this.setData({
         isMine: isMine,
         isFriend: isFriend,
-        canComment: isFriend || likedMe || isMine,
+        canComment: canComment,
         matched: post.matched || false,
         likedMe: likedMe,
         likedByMe: likedByMe,
@@ -79,7 +86,8 @@ Component({
         liked: alreadyLiked,
         bulbLit: alreadyLiked,
         imageLayout: getImageLayout(imgCount),
-        draft: ""
+        draft: "",
+        commentTree: tree
       });
     }
   },
@@ -98,17 +106,18 @@ Component({
     liked: false,
     bulbLit: false,
     imageLayout: "grid",
-    draft: ""
+    draft: "",
+    commentTree: [],
+    showReplyModal: false,
+    replyTarget: null,
+    replyModalDraft: ""
   },
 
   methods: {
     like() {
-      if (this.data.liked || this.data.matched) return;
-      this.setData({ liked: true, bulbLit: true });
+      if (this.data.liked) return;
+      this.setData({ liked: true, bulbLit: true, canComment: true, likedByMe: true });
       this.triggerEvent("like", { post: this.data.post });
-      if (this.data.likedMe) {
-        this.setData({ matched: true, canComment: true });
-      }
     },
 
     goChat() {
@@ -122,50 +131,130 @@ Component({
 
     send() {
       if (!this.data.canComment) return;
-      const content = this.data.draft.trim();
+      var content = this.data.draft.trim();
       if (!content) return;
       this.setData({ draft: "" });
-
-      // 乐观更新：立即把新评论加到卡片上，不需要刷新就能看到
-      var oldPost = this.data.post;
+      var post = this.data.post;
       var isAuthorComment = this.data.isMine;
-      var nick = isAuthorComment ? (oldPost.author && oldPost.author.nickName || '我') : (this.data.myNickName || '我');
+      var nick = isAuthorComment ? (post.author && post.author.nickName || '我') : (this.data.myNickName || '我');
       var avatar = isAuthorComment ? this.data.authorAvatarUrl : (this.data.myAvatarUrl || '');
       var newComment = {
         _id: 'temp_' + Date.now(),
+        fromUserId: this.data.currentUserId,
         content: content,
         createdAt: new Date().toISOString(),
         isAuthor: isAuthorComment,
-        fromUser: {
-          nickName: nick,
-          avatarUrl: avatar
-        },
+        fromUser: { nickName: nick, avatarUrl: avatar },
         _optimistic: true
       };
       var newPost = {};
-      for (var k in oldPost) { newPost[k] = oldPost[k]; }
-      newPost.comments = [newComment].concat(oldPost.comments || []);
+      for (var k in post) { newPost[k] = post[k]; }
+      newPost.comments = post.comments ? [newComment].concat(post.comments) : [newComment];
       this.setData({ post: newPost });
+      this.triggerEvent("reply", { post: post, content: content });
+    },
+
+    openReplyModal(e) {
+      if (!this.data.canComment) return;
+      var cid = e.currentTarget.dataset.cid;
+      var name = e.currentTarget.dataset.name || "";
+      if (!cid || cid.indexOf('temp_') === 0) return;
+      var cmt = this._findComment(cid);
+      this.setData({ showReplyModal: true, replyTarget: cmt, replyModalDraft: "" });
+    },
+
+    closeReplyModal() {
+      this.setData({ showReplyModal: false, replyTarget: null, replyModalDraft: "" });
+    },
+
+    onModalInput(e) {
+      this.setData({ replyModalDraft: e.detail.value });
+    },
+
+    sendModalReply() {
+      var content = this.data.replyModalDraft.trim();
+      if (!content) return;
+      var target = this.data.replyTarget;
+      if (!target) return;
+      var parentCommentId = target._id;
+      var post = this.data.post;
+      var nick = this.data.myNickName || '我';
+      var avatar = this.data.myAvatarUrl || '';
+      var tempId = 'temp_' + Date.now();
+      var newComment = {
+        _id: tempId,
+        fromUserId: this.data.currentUserId,
+        content: content,
+        parentCommentId: parentCommentId,
+        createdAt: new Date().toISOString(),
+        isAuthor: post.authorId === this.data.currentUserId,
+        fromUser: { nickName: nick, avatarUrl: avatar },
+        _optimistic: true
+      };
+      this.closeReplyModal();
+      var newPost = {};
+      for (var k in post) { newPost[k] = post[k]; }
+      newPost.comments = post.comments ? [newComment].concat(post.comments) : [newComment];
+      this.setData({ post: newPost });
+
+      var that = this;
+      this.triggerEvent("reply", { post: post, content: content, parentCommentId: parentCommentId });
+      // Note: reply event triggers API call in parent; on failure parent shows toast.
+      // Optimistic comment stays; next feed reload will get real data.
+    },
+
+    _findComment(cid) {
+      var comments = this.data.post.comments || [];
+      for (var i = 0; i < comments.length; i++) {
+        if (comments[i]._id === cid) return comments[i];
+      }
+      return null;
+    },
+
+    onLongPressComment(e) {
+      var isMineC = e.currentTarget.dataset.mine;
+      if (!isMineC) return;
+      var commentId = e.currentTarget.dataset.cid;
+      if (!commentId || commentId.indexOf('temp_') === 0) return;
+      var that = this;
+      wx.showModal({
+        title: "确认删除",
+        content: "确定要删除这条回复吗？",
+        confirmText: "删除",
+        confirmColor: "#c94b4b",
+        success: function(res) {
+          if (res.confirm) that._doDeleteComment(commentId);
+        }
+      });
+    },
+
+    _doDeleteComment(commentId) {
+      var post = this.data.post;
+      var api = require("../../utils/cloud");
+      var oldComments = post.comments || [];
+      var newComments = oldComments.filter(function(c) { return c._id !== commentId; });
+      var newPost = {};
+      for (var k in post) { newPost[k] = post[k]; }
+      newPost.comments = newComments;
+      this.setData({ post: newPost });
+      api.deleteComment(commentId).catch(function(err) {
+        console.error("删除失败", err);
+        wx.showToast({ title: "删除失败", icon: "none" });
+        this.setData({ post: post });
+      }.bind(this));
     },
 
     previewImage(event) {
       var urls = event.currentTarget.dataset.urls;
       var index = event.currentTarget.dataset.index;
       if (urls && urls.length) {
-        wx.previewImage({
-          current: urls[index] || urls[0],
-          urls: urls
-        });
+        wx.previewImage({ current: urls[index] || urls[0], urls: urls });
       }
     },
 
-    commentTime(ts) {
-      return shortTime(ts);
-    },
+    commentTime(ts) { return shortTime(ts); },
 
-    openReport() {
-      this.triggerEvent("report", { post: this.data.post });
-    },
+    openReport() { this.triggerEvent("report", { post: this.data.post }); },
 
     noop() {}
   }

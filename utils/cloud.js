@@ -105,6 +105,10 @@ function sendPrivateReply(payload) {
   return callApi("sendPrivateReply", payload, { sent: true });
 }
 
+function deleteComment(commentId) {
+  return callApiWrite("deleteComment", { commentId });
+}
+
 function reportPost(payload) {
   return callApi("reportPost", payload, { reported: true });
 }
@@ -204,6 +208,7 @@ module.exports = {
   createPost,
   likePost,
   sendPrivateReply,
+  deleteComment,
   reportPost,
   markPostAction,
   getNotifications,
