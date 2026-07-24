@@ -19,17 +19,33 @@ function getImageLayout(count) {
   return "grid";
 }
 
+function flattenTree(roots) {
+  var result = [];
+  function walk(nodes) {
+    if (!nodes || !nodes.length) return;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      result.push(n);
+      if (n.children && n.children.length) walk(n.children);
+    }
+  }
+  walk(roots);
+  return result;
+}
+
 function buildCommentTree(comments) {
   if (!comments || !comments.length) return [];
   var map = {};
   var roots = [];
-  var reversed = comments.slice().reverse();
-  for (var i = 0; i < reversed.length; i++) {
-    var c = reversed[i];
-    map[c._id] = { comment: c, children: [], depth: 0 };
+  var sorted = comments.slice().sort(function(a, b) {
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+  for (var i = 0; i < sorted.length; i++) {
+    var c = sorted[i];
+    map[c._id] = { comment: c, children: [], depth: 0, timeText: shortTime(c.createdAt) };
   }
-  for (var j = 0; j < reversed.length; j++) {
-    var c = reversed[j];
+  for (var j = 0; j < sorted.length; j++) {
+    var c = sorted[j];
     var node = map[c._id];
     if (c.parentCommentId && map[c.parentCommentId]) {
       node.depth = map[c.parentCommentId].depth + 1;
@@ -37,6 +53,20 @@ function buildCommentTree(comments) {
     } else {
       roots.push(node);
     }
+  }
+  function sortChildren(node) {
+    if (!node.children || !node.children.length) return;
+    if (node.children.length > 1) {
+      node.children.sort(function(a, b) {
+        return new Date(a.comment.createdAt).getTime() - new Date(b.comment.createdAt).getTime();
+      });
+    }
+    for (var k = 0; k < node.children.length; k++) {
+      sortChildren(node.children[k]);
+    }
+  }
+  for (var r = 0; r < roots.length; r++) {
+    sortChildren(roots[r]);
   }
   return roots;
 }
@@ -51,7 +81,7 @@ Component({
   },
 
   observers: {
-    post(post) {
+    'post': function(post) {
       if (!post) return;
       var currentUserId = this.data.currentUserId;
       var isMine = currentUserId && post.authorId === currentUserId;
@@ -71,7 +101,9 @@ Component({
       var alreadyLiked = likedByMe;
       var canComment = Boolean(post.canReply) || isMine;
       var imgCount = (post.imageUrls && post.imageUrls.length) || 0;
-      var tree = buildCommentTree(post.comments || []);
+      var oldOpt = (this.data._allComments || []).filter(function(c) { return c._optimistic && !c._deleted; });
+      var _allComments = (post.comments || []).concat(oldOpt);
+      var tree = buildCommentTree(_allComments);
       this.setData({
         isMine: isMine,
         isFriend: isFriend,
@@ -86,8 +118,8 @@ Component({
         liked: alreadyLiked,
         bulbLit: alreadyLiked,
         imageLayout: getImageLayout(imgCount),
-        draft: "",
-        commentTree: tree
+        _allComments: _allComments,
+        _commentList: flattenTree(tree)
       });
     }
   },
@@ -107,10 +139,11 @@ Component({
     bulbLit: false,
     imageLayout: "grid",
     draft: "",
-    commentTree: [],
-    showReplyModal: false,
-    replyTarget: null,
-    replyModalDraft: ""
+    _allComments: [],
+    _commentList: [],
+    replyingTo: "",
+    replyToName: "",
+    inputFocus: false
   },
 
   methods: {
@@ -133,7 +166,8 @@ Component({
       if (!this.data.canComment) return;
       var content = this.data.draft.trim();
       if (!content) return;
-      this.setData({ draft: "" });
+      var parentCommentId = this.data.replyingTo || undefined;
+      this.setData({ draft: "", replyingTo: "", replyToName: "", inputFocus: false });
       var post = this.data.post;
       var isAuthorComment = this.data.isMine;
       var nick = isAuthorComment ? (post.author && post.author.nickName || '我') : (this.data.myNickName || '我');
@@ -147,66 +181,37 @@ Component({
         fromUser: { nickName: nick, avatarUrl: avatar },
         _optimistic: true
       };
-      var newPost = {};
-      for (var k in post) { newPost[k] = post[k]; }
-      newPost.comments = post.comments ? [newComment].concat(post.comments) : [newComment];
-      this.setData({ post: newPost });
-      this.triggerEvent("reply", { post: post, content: content });
+      if (parentCommentId) newComment.parentCommentId = parentCommentId;
+      var allComments = this.data._allComments.concat([newComment]);
+      var tree = buildCommentTree(allComments);
+      this.setData({ _allComments: allComments, _commentList: flattenTree(tree) });
+      this.triggerEvent("reply", { post: post, content: content, parentCommentId: parentCommentId });
     },
 
-    openReplyModal(e) {
+    onReplyComment(e) {
       if (!this.data.canComment) return;
       var cid = e.currentTarget.dataset.cid;
       var name = e.currentTarget.dataset.name || "";
       if (!cid || cid.indexOf('temp_') === 0) return;
-      var cmt = this._findComment(cid);
-      this.setData({ showReplyModal: true, replyTarget: cmt, replyModalDraft: "" });
-    },
-
-    closeReplyModal() {
-      this.setData({ showReplyModal: false, replyTarget: null, replyModalDraft: "" });
-    },
-
-    onModalInput(e) {
-      this.setData({ replyModalDraft: e.detail.value });
-    },
-
-    sendModalReply() {
-      var content = this.data.replyModalDraft.trim();
-      if (!content) return;
-      var target = this.data.replyTarget;
-      if (!target) return;
-      var parentCommentId = target._id;
-      var post = this.data.post;
-      var nick = this.data.myNickName || '我';
-      var avatar = this.data.myAvatarUrl || '';
-      var tempId = 'temp_' + Date.now();
-      var newComment = {
-        _id: tempId,
-        fromUserId: this.data.currentUserId,
-        content: content,
-        parentCommentId: parentCommentId,
-        createdAt: new Date().toISOString(),
-        isAuthor: post.authorId === this.data.currentUserId,
-        fromUser: { nickName: nick, avatarUrl: avatar },
-        _optimistic: true
-      };
-      this.closeReplyModal();
-      var newPost = {};
-      for (var k in post) { newPost[k] = post[k]; }
-      newPost.comments = post.comments ? [newComment].concat(post.comments) : [newComment];
-      this.setData({ post: newPost });
-
+      this.setData({ replyingTo: cid, replyToName: name, draft: "", inputFocus: true });
       var that = this;
-      this.triggerEvent("reply", { post: post, content: content, parentCommentId: parentCommentId });
-      // Note: reply event triggers API call in parent; on failure parent shows toast.
-      // Optimistic comment stays; next feed reload will get real data.
+      setTimeout(function() {
+        that.setData({ inputFocus: true });
+      }, 100);
+    },
+
+    cancelReply() {
+      this.setData({ replyingTo: "", replyToName: "", draft: "", inputFocus: false });
+    },
+
+    onReplyBlur() {
+      this.setData({ inputFocus: false });
     },
 
     _findComment(cid) {
-      var comments = this.data.post.comments || [];
+      var comments = this.data._allComments || [];
       for (var i = 0; i < comments.length; i++) {
-        if (comments[i]._id === cid) return comments[i];
+        if (comments[i]._id === cid && !comments[i]._deleted) return comments[i];
       }
       return null;
     },
@@ -229,18 +234,23 @@ Component({
     },
 
     _doDeleteComment(commentId) {
-      var post = this.data.post;
       var api = require("../../utils/cloud");
-      var oldComments = post.comments || [];
-      var newComments = oldComments.filter(function(c) { return c._id !== commentId; });
-      var newPost = {};
-      for (var k in post) { newPost[k] = post[k]; }
-      newPost.comments = newComments;
-      this.setData({ post: newPost });
+      var prevAll = this.data._allComments;
+      var found = false;
+      var allComments = prevAll.filter(function(c) {
+        if (c._id === commentId) { found = true; return false; }
+        return true;
+      });
+      if (!found) {
+        allComments = prevAll.concat([{ _id: commentId, _deleted: true }]);
+      }
+      var tree = buildCommentTree(allComments);
+      this.setData({ _allComments: allComments, _commentList: flattenTree(tree) });
       api.deleteComment(commentId).catch(function(err) {
         console.error("删除失败", err);
         wx.showToast({ title: "删除失败", icon: "none" });
-        this.setData({ post: post });
+        var fallbackTree = buildCommentTree(prevAll);
+        this.setData({ _allComments: prevAll, _commentList: flattenTree(fallbackTree) });
       }.bind(this));
     },
 

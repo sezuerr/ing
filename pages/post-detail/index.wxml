@@ -44,9 +44,9 @@
             <view wx:for="{{likers}}" wx:key="_id" class="mine-liker-row">
               <view class="mine-liker-avatar {{item.fromUser.isFriend ? 'is-friend' : ''}}">
                 <image wx:if="{{item.fromUser.isFriend && item.fromUser.avatarUrl}}" src="{{item.fromUser.avatarUrl}}" mode="aspectFill" />
-                <text wx:else>{{item.fromUser.isFriend && item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '?'}}</text>
+                <text wx:else>{{item.fromUser.isFriend ? (item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '好') : '?'}}</text>
               </view>
-              <text class="mine-liker-name {{item.fromUser.isFriend ? '' : 'anonymous'}}">{{item.fromUser.isFriend && item.fromUser.nickName ? item.fromUser.nickName : '匿名同学'}}</text>
+              <text class="mine-liker-name {{item.fromUser.isFriend ? '' : 'anonymous'}}">{{item.fromUser.isFriend ? (item.fromUser.nickName || '好友') : '匿名同学'}}</text>
               <view wx:if="{{item.fromUser.isFriend}}" class="mine-liker-arrow" data-liker="{{item.fromUser}}" catchtap="openLikerProfile">
                 <text>›</text>
               </view>
@@ -60,25 +60,30 @@
         <view wx:if="{{tabActive === 'replies'}}" class="mine-comments-section">
           <view class="mine-reply-bar">
             <view wx:if="{{replyingTo}}" class="mine-reply-to">
-              <text>回复 {{replyToName}}</text>
+              <text class="mine-reply-to-text">回复 {{replyToName}}</text>
               <text class="mine-reply-cancel" catchtap="cancelOwnReply">取消</text>
             </view>
             <view class="reply-area">
-              <input class="reply-input" value="{{draft}}" placeholder="{{replyingTo ? '' : '回复…'}}" confirm-type="send" adjust-position bindinput="onOwnDraftInput" bindconfirm="sendOwnReply" />
+              <input class="reply-input" value="{{draft}}" placeholder="{{replyingTo ? '' : '回复…'}}" confirm-type="send" adjust-position focus="{{inputFocus}}" bindinput="onOwnDraftInput" bindconfirm="sendOwnReply" bindblur="onReplyBlur" />
               <view class="send-btn" catchtap="sendOwnReply">
                 <image class="send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
               </view>
             </view>
           </view>
-          <block wx:if="{{comments.length}}">
-            <view wx:for="{{comments}}" wx:key="_id" class="mine-comment {{replyingTo === item._id ? 'mine-comment-active' : ''}}" catchtap="onReplyOwnComment" bindlongpress="onLongPressOwnComment" data-cid="{{item._id}}" data-name="{{item.fromUser ? item.fromUser.nickName : ''}}">
-              <view class="mine-comment-avatar">
-                <image wx:if="{{item.fromUser && item.fromUser.avatarUrl}}" src="{{item.fromUser.avatarUrl}}" mode="aspectFill" />
-                <text wx:else>{{item.fromUser && item.fromUser.nickName ? item.fromUser.nickName.slice(0,1) : '匿'}}</text>
-              </view>
-              <view class="mine-comment-right">
-                <view class="mine-comment-name">{{item.fromUser ? (item.fromUser.nickName || '好友') : '好友'}}</view>
-                <text class="mine-comment-body">{{item.content}}</text>
+          <block wx:if="{{commentList.length}}">
+            <view wx:for="{{commentList}}" wx:key="comment._id" class="mine-comment-thread {{item.depth > 0 ? 'mine-has-thread' : ''}}" style="margin-left: {{item.depth > 0 ? 48 : 0}}rpx">
+              <view class="mine-comment {{replyingTo === item.comment._id ? 'mine-comment-active' : ''}}" catchtap="onReplyOwnComment" bindlongpress="onLongPressOwnComment" data-cid="{{item.comment._id}}" data-name="{{item.comment.fromUser ? item.comment.fromUser.nickName : ''}}">
+                <view class="mine-comment-avatar">
+                  <image wx:if="{{item.comment.fromUser && item.comment.fromUser.avatarUrl}}" src="{{item.comment.fromUser.avatarUrl}}" mode="aspectFill" />
+                  <text wx:else>{{item.comment.fromUser && item.comment.fromUser.nickName ? item.comment.fromUser.nickName.slice(0,1) : '匿'}}</text>
+                </view>
+                <view class="mine-comment-right">
+                  <view class="mine-comment-name">
+                    <text>{{item.comment.fromUser ? (item.comment.fromUser.nickName || '好友') : '好友'}}</text>
+                    <text wx:if="{{item.comment.isAuthor}}" class="mine-author-tag">作者</text>
+                  </view>
+                  <text class="mine-comment-body">{{item.comment.content}}</text>
+                </view>
               </view>
             </view>
           </block>

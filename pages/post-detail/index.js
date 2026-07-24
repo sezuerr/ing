@@ -2,10 +2,64 @@ const { REPORT_REASONS } = require("../../utils/constants");
 const api = require("../../utils/cloud");
 const mock = require("../../utils/mock");
 
+function buildCommentTree(comments) {
+  if (!comments || !comments.length) return [];
+  var map = {};
+  var roots = [];
+  var sorted = comments.slice().sort(function(a, b) {
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+  for (var i = 0; i < sorted.length; i++) {
+    var c = sorted[i];
+    map[c._id] = { comment: c, children: [], depth: 0 };
+  }
+  for (var j = 0; j < sorted.length; j++) {
+    var c = sorted[j];
+    var node = map[c._id];
+    if (c.parentCommentId && map[c.parentCommentId]) {
+      node.depth = map[c.parentCommentId].depth + 1;
+      map[c.parentCommentId].children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  function sortChildren(node) {
+    if (!node.children || !node.children.length) return;
+    if (node.children.length > 1) {
+      node.children.sort(function(a, b) {
+        return new Date(a.comment.createdAt).getTime() - new Date(b.comment.createdAt).getTime();
+      });
+    }
+    for (var k = 0; k < node.children.length; k++) {
+      sortChildren(node.children[k]);
+    }
+  }
+  for (var r = 0; r < roots.length; r++) {
+    sortChildren(roots[r]);
+  }
+  return roots;
+}
+
+function flattenTree(roots) {
+  var result = [];
+  function walk(nodes) {
+    if (!nodes || !nodes.length) return;
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      result.push(n);
+      if (n.children && n.children.length) walk(n.children);
+    }
+  }
+  walk(roots);
+  return result;
+}
+
 Page({
   data: {
     post: null,
     comments: [],
+    commentTree: [],
+    commentList: [],
     likers: [],
     reportVisible: false,
     reportReasons: REPORT_REASONS,
@@ -18,7 +72,8 @@ Page({
     tabActive: "replies",
     draft: "",
     replyingTo: "",
-    replyToName: ""
+    replyToName: "",
+    inputFocus: false
   },
 
   async onLoad(options) {
@@ -49,14 +104,20 @@ Page({
       }
     }
 
+    var commentTree = [];
+    var commentList = [];
+    if (isMine && Array.isArray(comments) && comments.length) {
+      commentTree = buildCommentTree(comments);
+      commentList = flattenTree(commentTree);
+    }
+
     this.setData({
-      post, comments, currentUserId, likers,
+      post, comments, commentTree, commentList, currentUserId, likers,
       isMine, authorName, authorAvatar, avatarText, timeText,
       myNickName: cu.nickName || "",
       myAvatarUrl: cu.avatarUrl || ""
     });
 
-    // 转换云存储图片链接
     this.resolveDetailImages(post, comments, likers);
   },
 
@@ -91,7 +152,8 @@ Page({
         if (l.fromUser && l.fromUser.avatarUrl && map[l.fromUser.avatarUrl]) l.fromUser.avatarUrl = map[l.fromUser.avatarUrl];
       });
     }
-    this.setData({ post: post, comments: comments, likers: likers });
+    var tree = buildCommentTree(comments);
+    this.setData({ post: post, comments: comments, likers: likers, commentTree: tree, commentList: flattenTree(tree) });
   },
 
   switchTab(e) {
@@ -275,11 +337,19 @@ Page({
     var cid = e.currentTarget.dataset.cid;
     var name = e.currentTarget.dataset.name || "";
     if (!cid) return;
-    this.setData({ replyingTo: cid, replyToName: name, draft: "" });
+    this.setData({ replyingTo: cid, replyToName: name, draft: "", inputFocus: true });
+    var that = this;
+    setTimeout(function() {
+      that.setData({ inputFocus: true });
+    }, 100);
   },
 
   cancelOwnReply() {
-    this.setData({ replyingTo: "", replyToName: "", draft: "" });
+    this.setData({ replyingTo: "", replyToName: "", draft: "", inputFocus: false });
+  },
+
+  onReplyBlur() {
+    this.setData({ inputFocus: false });
   },
 
   sendOwnReply() {
@@ -288,14 +358,13 @@ Page({
     var payload = { postId: this.data.post._id, content: content };
     if (this.data.replyingTo) payload.parentCommentId = this.data.replyingTo;
     var that = this;
-    that.setData({ draft: "", replyingTo: "", replyToName: "" });
+    that.setData({ draft: "", replyingTo: "", replyToName: "", inputFocus: false });
     api.sendPrivateReply(payload).then(function() {
       wx.showToast({ title: "已发送", icon: "success" });
     }).catch(function(err) {
       console.error("回复失败", err);
       wx.showToast({ title: "发送失败", icon: "none" });
     });
-    // 乐观插入
     var comments = this.data.comments.slice();
     comments.push({
       _id: "temp_" + Date.now(),
@@ -307,7 +376,8 @@ Page({
       isAuthor: true,
       _optimistic: true
     });
-    this.setData({ comments: comments });
+    var tree = buildCommentTree(comments);
+    this.setData({ comments: comments, commentTree: tree, commentList: flattenTree(tree) });
   },
 
   onLongPressOwnComment(e) {
@@ -322,7 +392,8 @@ Page({
       success: function(res) {
         if (res.confirm) {
           var comments = that.data.comments.filter(function(c) { return c._id !== cid; });
-          that.setData({ comments: comments });
+          var tree = buildCommentTree(comments);
+          that.setData({ comments: comments, commentTree: tree, commentList: flattenTree(tree) });
           api.deleteComment(cid).catch(function(err) {
             console.error("删除失败", err);
             wx.showToast({ title: "删除失败", icon: "none" });

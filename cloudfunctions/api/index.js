@@ -932,7 +932,14 @@ async function getPostDetail(openid, payload) {
     for (const comment of comments.data) {
       const fromUser = await getUserByOpenId(comment.fromUserId);
       enrichedComments.push({
-        ...comment,
+        _id: comment._id,
+        postId: comment.postId,
+        fromUserId: comment.fromUserId,
+        toUserId: comment.toUserId,
+        parentCommentId: comment.parentCommentId,
+        content: comment.content,
+        createdAt: comment.createdAt,
+        isAuthor: comment.fromUserId === post.authorId,
         fromUser: fromUser ? {
           nickName: fromUser.nickName,
           avatarUrl: fromUser.avatarUrl
@@ -941,8 +948,25 @@ async function getPostDetail(openid, payload) {
     }
     await resolveFileUrlsInData(post);
     await resolveFileUrlsInData(enrichedComments);
+
+    const likedByMe = await db.collection(C.likes).where({
+      fromUserId: openid,
+      postId: payload.postId
+    }).limit(1).get();
+
     var ownAuthor = await getUserByOpenId(openid);
-    return ok({ post: { ...post, author: ownAuthor ? { nickName: ownAuthor.nickName, avatarUrl: ownAuthor.avatarUrl, isFriend: false } : {}, matched: false, canReply: true }, comments: enrichedComments });
+    return ok({
+      post: {
+        ...post,
+        author: ownAuthor ? { nickName: ownAuthor.nickName, avatarUrl: ownAuthor.avatarUrl, isFriend: false } : {},
+        matched: false,
+        canReply: true,
+        likedByMe: Boolean(likedByMe.data.length),
+        likedMe: false,
+        comments: enrichedComments
+      },
+      comments: enrichedComments
+    });
   }
 
   // 别人的帖子：需点亮过帖主或已配对才能查看评论
@@ -1024,18 +1048,25 @@ async function getPostLikers(openid, payload) {
     .limit(200)
     .get();
 
+  const friendIds = await getFriendIds(openid);
+
   const likers = [];
   for (const like of likesResult.data) {
-    const user = await getUserByOpenId(like.fromUserId);
-    const friendIds = await getFriendIds(openid);
     const isFriend = friendIds.includes(like.fromUserId);
+    var nickName = "";
+    var avatarUrl = "";
+    if (isFriend) {
+      const user = await getUserByOpenId(like.fromUserId);
+      nickName = user ? (user.nickName || "") : "";
+      avatarUrl = user ? (user.avatarUrl || "") : "";
+    }
     likers.push({
       _id: like._id,
       postId: like.postId,
       fromUser: {
         _id: like.fromUserId,
-        nickName: isFriend && user ? (user.nickName || "") : "",
-        avatarUrl: isFriend && user ? (user.avatarUrl || "") : "",
+        nickName: nickName,
+        avatarUrl: avatarUrl,
         isFriend: isFriend
       },
       createdAt: like.createdAt

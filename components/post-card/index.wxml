@@ -33,8 +33,23 @@
   </view>
 
   <!-- 评论树 -->
-  <view wx:if="{{commentTree.length}}" class="comments-section">
-    <template is="comment-tree" data="{{nodes: commentTree, depth: 0, currentUserId: currentUserId}}" />
+  <view wx:if="{{_commentList.length}}" class="comments-section">
+    <view wx:for="{{_commentList}}" wx:key="comment._id" class="comment-thread {{item.depth > 0 ? 'has-thread' : ''}}" style="margin-left: {{item.depth > 0 ? 48 : 0}}rpx">
+      <view class="comment-row {{replyingTo === item.comment._id ? 'comment-row-active' : ''}}" bindlongpress="onLongPressComment" catchtap="onReplyComment" data-cid="{{item.comment._id}}" data-name="{{item.comment.fromUser ? item.comment.fromUser.nickName : ''}}" data-mine="{{currentUserId === item.comment.fromUserId}}">
+        <view class="comment-avatar {{!item.comment.fromUser ? 'anon' : ''}}">
+          <image wx:if="{{item.comment.fromUser && item.comment.fromUser.avatarUrl}}" src="{{item.comment.fromUser.avatarUrl}}" mode="aspectFill" />
+          <text wx:else>匿</text>
+        </view>
+        <view class="comment-content">
+          <view class="comment-name-row">
+            <text class="comment-name">{{item.comment.fromUser ? item.comment.fromUser.nickName : '匿名同学'}}</text>
+            <text wx:if="{{item.comment.isAuthor}}" class="comment-author-tag">作者</text>
+          </view>
+          <text class="comment-text">{{item.comment.content}}</text>
+        </view>
+        <text class="comment-time">{{item.timeText}}</text>
+      </view>
+    </view>
   </view>
 
   <!-- 底部操作栏 -->
@@ -50,9 +65,15 @@
         <text>{{post.commentCount || 0}} 回复</text>
       </view>
       <view wx:if="{{canComment}}" class="reply-area">
-        <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
-        <view class="send-btn" catchtap="send">
-          <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+        <view wx:if="{{replyingTo}}" class="reply-to-bar">
+          <text class="reply-to-text">回复 {{replyToName}}</text>
+          <text class="reply-cancel" catchtap="cancelReply">取消</text>
+        </view>
+        <view class="reply-input-row">
+          <input class="reply-input" value="{{draft}}" placeholder="回复…" confirm-type="send" adjust-position focus="{{inputFocus}}" bindinput="onDraftInput" bindconfirm="send" bindblur="onReplyBlur" />
+          <view class="send-btn" catchtap="send">
+            <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+          </view>
         </view>
       </view>
     </view>
@@ -62,10 +83,16 @@
       <view class="like-btn liked" catchtap="noop">
         <image class="footer-icon" src="/icons/lightbulb-fill.svg" mode="aspectFit" />
       </view>
-      <view wx:if="{{canComment}}" class="reply-area">
-        <input class="reply-input" value="{{draft}}" placeholder="说点什么…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
-        <view class="send-btn" catchtap="send">
-          <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+      <view wx:if="{{canComment}}" class="reply-area footer-reply-area">
+        <view wx:if="{{replyingTo}}" class="reply-to-bar">
+          <text class="reply-to-text">回复 {{replyToName}}</text>
+          <text class="reply-cancel" catchtap="cancelReply">取消</text>
+        </view>
+        <view class="reply-input-row">
+          <input class="reply-input" value="{{draft}}" placeholder="说点什么…" confirm-type="send" adjust-position focus="{{inputFocus}}" bindinput="onDraftInput" bindconfirm="send" bindblur="onReplyBlur" />
+          <view class="send-btn" catchtap="send">
+            <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+          </view>
         </view>
       </view>
       <text wx:else class="footer-label">已点亮</text>
@@ -76,10 +103,16 @@
       <view class="like-btn" catchtap="like">
         <image class="footer-icon" src="/icons/lightbulb-line.svg" mode="aspectFit" />
       </view>
-      <view class="reply-area">
-        <input class="reply-input" value="{{draft}}" placeholder="说点什么…" confirm-type="send" adjust-position bindinput="onDraftInput" bindconfirm="send" />
-        <view class="send-btn" catchtap="send">
-          <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+      <view class="reply-area footer-reply-area">
+        <view wx:if="{{replyingTo}}" class="reply-to-bar">
+          <text class="reply-to-text">回复 {{replyToName}}</text>
+          <text class="reply-cancel" catchtap="cancelReply">取消</text>
+        </view>
+        <view class="reply-input-row">
+          <input class="reply-input" value="{{draft}}" placeholder="说点什么…" confirm-type="send" adjust-position focus="{{inputFocus}}" bindinput="onDraftInput" bindconfirm="send" bindblur="onReplyBlur" />
+          <view class="send-btn" catchtap="send">
+            <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
+          </view>
         </view>
       </view>
     </view>
@@ -92,42 +125,4 @@
       <text class="footer-label">{{likedMe ? '回点TA' : '点亮'}}</text>
     </view>
   </view>
-
-  <!-- 回复弹窗 -->
-  <view wx:if="{{showReplyModal}}" class="reply-modal-mask" catchtap="closeReplyModal"></view>
-  <view wx:if="{{showReplyModal}}" class="reply-modal">
-    <view class="reply-modal-header">
-      <text class="reply-modal-title">回复 {{replyTarget.fromUser ? replyTarget.fromUser.nickName : '匿名'}}</text>
-      <text class="reply-modal-close" catchtap="closeReplyModal">取消</text>
-    </view>
-    <text class="reply-modal-quote">{{replyTarget.content}}</text>
-    <view class="reply-modal-input-row">
-      <input class="reply-modal-input" value="{{replyModalDraft}}" placeholder="输入回复…" confirm-type="send" adjust-position bindinput="onModalInput" bindconfirm="sendModalReply" />
-      <view class="send-btn" catchtap="sendModalReply">
-        <image class="footer-icon send-icon" src="/icons/send-ins-line.svg" mode="aspectFit" />
-      </view>
-    </view>
-  </view>
 </view>
-
-<template name="comment-tree">
-  <block wx:for="{{nodes}}" wx:key="comment._id">
-    <view class="comment-thread {{item.depth > 0 ? 'has-thread' : ''}}" style="margin-left: {{item.depth * 48}}rpx">
-      <view class="comment-row" bindlongpress="onLongPressComment" catchtap="openReplyModal" data-cid="{{item.comment._id}}" data-name="{{item.comment.fromUser ? item.comment.fromUser.nickName : ''}}" data-mine="{{currentUserId === item.comment.fromUserId}}">
-        <view class="comment-avatar {{!item.comment.fromUser ? 'anon' : ''}}">
-          <image wx:if="{{item.comment.fromUser && item.comment.fromUser.avatarUrl}}" src="{{item.comment.fromUser.avatarUrl}}" mode="aspectFill" />
-          <text wx:else>匿</text>
-        </view>
-        <view class="comment-content">
-          <view class="comment-name-row">
-            <text class="comment-name">{{item.comment.fromUser ? item.comment.fromUser.nickName : '匿名同学'}}</text>
-            <text wx:if="{{item.comment.isAuthor}}" class="comment-author-tag">作者</text>
-          </view>
-          <text class="comment-text">{{item.comment.content}}</text>
-        </view>
-        <text class="comment-time">{{item.comment.createdAt ? commentTime(item.comment.createdAt) : ''}}</text>
-      </view>
-      <template wx:if="{{item.children.length}}" is="comment-tree" data="{{nodes: item.children, depth: item.depth + 1, currentUserId: currentUserId}}" />
-    </view>
-  </block>
-</template>
